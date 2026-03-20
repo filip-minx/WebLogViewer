@@ -285,6 +285,24 @@ body {
   margin-left: var(--spacing-xs);
 }
 
+.column-resizer {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: 5px;
+  background: transparent;
+  cursor: col-resize;
+  user-select: none;
+  touch-action: none;
+  z-index: 1;
+}
+
+.column-resizer:hover,
+.column-resizer.resizing {
+  background: var(--color-primary);
+}
+
 .log-table td {
   padding: var(--spacing-xs) var(--spacing-sm);
   border-bottom: 1px solid var(--color-border);

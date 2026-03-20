@@ -3,6 +3,7 @@ import {
   useReactTable,
   getCoreRowModel,
   flexRender,
+  ColumnResizeMode,
 } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type { ParsedLogEntry, ColumnDef, FilterState } from '../../models/types';
@@ -32,11 +33,14 @@ export const LogTable: React.FC<LogTableProps> = ({
   } | null>(null);
 
   const tableColumns = useMemo(() => createTableColumns(columns), [columns]);
+  const [columnResizeMode] = useState<ColumnResizeMode>('onChange');
 
   const table = useReactTable({
     data: entries,
     columns: tableColumns,
     getCoreRowModel: getCoreRowModel(),
+    columnResizeMode,
+    enableColumnResizing: true,
   });
 
   const { rows } = table.getRowModel();
@@ -141,7 +145,7 @@ export const LogTable: React.FC<LogTableProps> = ({
                 return (
                   <th
                     key={header.id}
-                    style={{ width: header.getSize() }}
+                    style={{ width: header.getSize(), position: 'relative' }}
                     className={isFilterable ? 'filterable' : ''}
                     onClick={(e) => isFilterable && handleColumnHeaderClick(e, header.id)}
                   >
@@ -149,6 +153,14 @@ export const LogTable: React.FC<LogTableProps> = ({
                       {flexRender(header.column.columnDef.header, header.getContext())}
                       {hasFilter && <span className="filter-indicator">●</span>}
                     </div>
+                    {header.column.getCanResize() && (
+                      <div
+                        onMouseDown={header.getResizeHandler()}
+                        onTouchStart={header.getResizeHandler()}
+                        className={`column-resizer ${header.column.getIsResizing() ? 'resizing' : ''}`}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    )}
                   </th>
                 );
               })}
