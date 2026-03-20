@@ -44,7 +44,7 @@ export class ZipService {
     const firstPending = this.pendingRequests.values().next().value;
     if (!firstPending) return;
 
-    const requestId = this.pendingRequests.keys().next().value;
+    const requestId = this.pendingRequests.keys().next().value as number;
     this.pendingRequests.delete(requestId);
 
     if (response.type === 'error') {
