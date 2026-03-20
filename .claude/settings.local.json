@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find . -maxdepth 3 -type f \\\\\\( -name \"*.ts\" -o -name \"*.tsx\" \\\\\\) ! -path \"./.claude/*\" 2>/dev/null | head -30)",
+      "Bash(claude plugin:*)",
+      "Bash(find \"C:\\\\git\\\\WebLogAnalyzer\" -type f \\\\\\( -name \"*.ts\" -o -name \"*.tsx\" -o -name \"*.js\" -o -name \"*.jsx\" -o -name \"package.json\" \\\\\\) 2>/dev/null | grep -v node_modules | grep -v \".claude\")",
+      "Bash(find \"C:\\\\git\\\\WebLogAnalyzer\" -type f -name \"*.json\" -o -name \"*.yaml\" -o -name \"*.yml\" -o -name \"*.toml\" -o -name \"*.config.*\" 2>/dev/null | head -20)",
+      "Bash(find /c/git/WebLogAnalyzer -type f -name \"*.json\" -o -name \"*.ts\" -o -name \"*.tsx\" -o -name \"*.js\" 2>/dev/null | head -20)",
+      "Read(//c/Program Files/**)",
+      "Read(//c/Program Files \\(x86\\)/**)"
+    ]
+  }
+}
