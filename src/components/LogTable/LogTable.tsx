@@ -40,6 +40,7 @@ export const LogTable: React.FC<LogTableProps> = ({
     columns: tableColumns,
     getCoreRowModel: getCoreRowModel(),
     columnResizeMode,
+    columnResizeDirection: 'ltr',
     enableColumnResizing: true,
   });
 
@@ -133,7 +134,7 @@ export const LogTable: React.FC<LogTableProps> = ({
 
   return (
     <div ref={tableContainerRef} className="log-table-container">
-      <table className="log-table">
+      <table className="log-table" style={{ width: table.getTotalSize() }}>
         <thead>
           {table.getHeaderGroups().map(headerGroup => (
             <tr key={headerGroup.id}>

@@ -242,10 +242,10 @@ body {
 }
 
 .log-table {
-  width: 100%;
   border-collapse: collapse;
   font-size: 13px;
   font-family: var(--font-mono);
+  min-width: 100%;
 }
 
 .log-table thead {
