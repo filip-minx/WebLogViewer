@@ -125,13 +125,7 @@ export const LogTable: React.FC<LogTableProps> = ({
     });
   };
 
-  if (entries.length === 0) {
-    return (
-      <div className="log-table-empty">
-        <p>No log entries to display</p>
-      </div>
-    );
-  }
+  const hasNoEntries = entries.length === 0;
 
   return (
     <div ref={tableContainerRef} className="log-table-container">
@@ -162,32 +156,42 @@ export const LogTable: React.FC<LogTableProps> = ({
           ))}
         </thead>
         <tbody>
-          {paddingTop > 0 && (
+          {hasNoEntries ? (
             <tr>
-              <td style={{ height: `${paddingTop}px` }} />
+              <td colSpan={columns.length} className="no-results-message">
+                No log entries match the current filters
+              </td>
             </tr>
-          )}
-          {virtualRows.map(virtualRow => {
-            const row = rows[virtualRow.index];
-            const isFocused = virtualRow.index === focusedRowIndex;
-            return (
-              <tr
-                key={row.id}
-                onClick={() => handleRowClick(virtualRow.index, row.original)}
-                className={`data-row ${isFocused ? 'focused' : ''}`}
-              >
-                {row.getVisibleCells().map(cell => (
-                  <td key={cell.id} style={{ width: cell.column.getSize() }}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
-              </tr>
-            );
-          })}
-          {paddingBottom > 0 && (
-            <tr>
-              <td style={{ height: `${paddingBottom}px` }} />
-            </tr>
+          ) : (
+            <>
+              {paddingTop > 0 && (
+                <tr>
+                  <td style={{ height: `${paddingTop}px` }} />
+                </tr>
+              )}
+              {virtualRows.map(virtualRow => {
+                const row = rows[virtualRow.index];
+                const isFocused = virtualRow.index === focusedRowIndex;
+                return (
+                  <tr
+                    key={row.id}
+                    onClick={() => handleRowClick(virtualRow.index, row.original)}
+                    className={`data-row ${isFocused ? 'focused' : ''}`}
+                  >
+                    {row.getVisibleCells().map(cell => (
+                      <td key={cell.id} style={{ width: cell.column.getSize() }}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
+              {paddingBottom > 0 && (
+                <tr>
+                  <td style={{ height: `${paddingBottom}px` }} />
+                </tr>
+              )}
+            </>
           )}
         </tbody>
       </table>
