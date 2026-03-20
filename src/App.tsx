@@ -4,10 +4,12 @@ import { FileTree } from './components/FileTree/FileTree';
 import { LogTable } from './components/LogTable/LogTable';
 import { FilterPanel } from './components/FilterPanel/FilterPanel';
 import { MessagePanel } from './components/MessagePanel/MessagePanel';
+import { ResizeHandle } from './components/ResizeHandle/ResizeHandle';
 import { StatusBar } from './components/StatusBar/StatusBar';
 import { ZipService } from './services/zipService';
 import { ParseService } from './services/parseService';
 import { applyFilters } from './utils/filterUtils';
+import { useResizable } from './hooks/useResizable';
 import type {
   ZipEntryMetadata,
   ParsedLogEntry,
@@ -43,6 +45,28 @@ function App() {
   // Services
   const zipService = useRef(new ZipService()).current;
   const parseService = useRef(new ParseService()).current;
+
+  // Resizable panels
+  const sidebarResize = useResizable({
+    storageKey: 'weblog-sidebar-width',
+    defaultSize: 250,
+    minSize: 150,
+    maxSize: 500,
+  });
+
+  const filterResize = useResizable({
+    storageKey: 'weblog-filter-width',
+    defaultSize: 300,
+    minSize: 200,
+    maxSize: 600,
+  });
+
+  const messageResize = useResizable({
+    storageKey: 'weblog-message-height',
+    defaultSize: 200,
+    minSize: 100,
+    maxSize: 600,
+  });
 
   // Handle ZIP file selection
   const handleFileSelect = async (file: File) => {
@@ -149,8 +173,9 @@ function App() {
           </div>
         </header>
 
-        <main className={`app-main ${isRawDisplay ? 'raw-mode' : ''}`}>
-          <aside className="sidebar">
+        <main className="app-main">
+          {/* Sidebar */}
+          <aside className="sidebar" style={{ width: `${sidebarResize.size}px` }}>
             <FileTree
               entries={zipEntries}
               selectedPath={selectedFilePath}
@@ -158,6 +183,14 @@ function App() {
             />
           </aside>
 
+          {/* Sidebar resize handle */}
+          <ResizeHandle
+            direction="horizontal"
+            onMouseDown={(e) => sidebarResize.startResize(e, 'horizontal')}
+            isResizing={sidebarResize.isResizing}
+          />
+
+          {/* Content area */}
           <section className="content-area">
             <div className="table-area">
               {parsedEntries.length === 0 && parseState?.status !== 'parsing' ? (
@@ -176,21 +209,38 @@ function App() {
                 />
               )}
             </div>
+
+            {/* Message panel with resize handle */}
             {!isRawDisplay && parsedEntries.length > 0 && (
-              <div className="message-area">
-                <MessagePanel entry={selectedEntry} />
-              </div>
+              <>
+                <ResizeHandle
+                  direction="vertical"
+                  onMouseDown={(e) => messageResize.startResize(e, 'vertical', true)}
+                  isResizing={messageResize.isResizing}
+                />
+                <div className="message-area" style={{ height: `${messageResize.size}px` }}>
+                  <MessagePanel entry={selectedEntry} />
+                </div>
+              </>
             )}
           </section>
 
+          {/* Filter sidebar with resize handle */}
           {columns.length > 0 && !isRawDisplay && (
-            <aside className="filter-sidebar">
-              <FilterPanel
-                columns={columns}
-                filterState={filterState}
-                onFilterChange={setFilterState}
+            <>
+              <ResizeHandle
+                direction="horizontal"
+                onMouseDown={(e) => filterResize.startResize(e, 'horizontal', true)}
+                isResizing={filterResize.isResizing}
               />
-            </aside>
+              <aside className="filter-sidebar" style={{ width: `${filterResize.size}px` }}>
+                <FilterPanel
+                  columns={columns}
+                  filterState={filterState}
+                  onFilterChange={setFilterState}
+                />
+              </aside>
+            </>
           )}
         </main>
 
