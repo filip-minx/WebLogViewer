@@ -45,7 +45,7 @@ export const LogTable: React.FC<LogTableProps> = ({
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => tableContainerRef.current,
-    estimateSize: () => 35,
+    estimateSize: () => 27,
     overscan: 10,
   });
 
