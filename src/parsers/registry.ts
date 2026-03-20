@@ -1,15 +1,22 @@
 // Parser registration and detection
 
 import type { LogParser } from './base';
+import { BinaryFileParser } from './binaryFileParser';
+import { JsonRawParser } from './jsonRawParser';
+import { TriplePipeParser } from './triplePipeParser';
 import { PipeWindowsParser } from './pipeWindowsParser';
 import { JsonLinesParser } from './jsonLinesParser';
 import { GenericDelimitedParser } from './genericDelimitedParser';
 import { RawTextParser } from './rawTextParser';
 
-// Parser registry - IMPORTANT: RawTextParser must be last (lowest priority)
+// Parser registry - order matters! Higher priority parsers first.
+// IMPORTANT: RawTextParser must be last (lowest priority fallback)
 export const PARSERS: LogParser[] = [
-  new PipeWindowsParser(),
-  new JsonLinesParser(),
+  new BinaryFileParser(), // Catch binary files early (.evtx, .exe, etc.)
+  new JsonRawParser(), // High priority for .json/.ndjson files (display as-is)
+  new TriplePipeParser(), // Triple-pipe format (|||)
+  new PipeWindowsParser(), // Single-pipe format (|)
+  new JsonLinesParser(), // NDJSON parsing with columns
   new GenericDelimitedParser(),
   new RawTextParser(), // Fallback - always last
 ];

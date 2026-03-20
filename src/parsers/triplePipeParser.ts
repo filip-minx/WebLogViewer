@@ -1,15 +1,15 @@
-// Pipe-separated Windows log parser
-// Format: 2026-03-20_13-11-24.795|ERROR|Source|Message
+// Triple-pipe separated parser for HTTP logs
+// Format: 2026-03-13_12-40-36.925|||INFO|||Http|||[Get: 200 OK] - message
 
 import { BaseParser } from './base';
 import type { ParsedLogEntry, ColumnDef } from '../models/types';
 
-export class PipeWindowsParser extends BaseParser {
-  id = 'pipe-windows';
-  name = 'Pipe-separated Windows Logs';
+export class TriplePipeParser extends BaseParser {
+  id = 'triple-pipe';
+  name = 'Triple-pipe HTTP Logs';
 
-  // Pattern: YYYY-MM-DD_HH-MM-SS.mmm|LEVEL|Source|Message
-  private readonly entryPattern = /^(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.\d{3})\|([A-Z]+)\|([^|]+)\|(.*)$/;
+  // Pattern: YYYY-MM-DD_HH-MM-SS.mmm|||LEVEL|||Source|||Message
+  private readonly entryPattern = /^(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.\d{3})\|\|\|([A-Z]+)\|\|\|([^|]+)\|\|\|(.*)$/;
 
   detect(sampleLines: string[], fileName: string): number {
     if (sampleLines.length === 0) return 0;
@@ -30,9 +30,9 @@ export class PipeWindowsParser extends BaseParser {
 
     // If we found at least a few matches, this is likely the right parser
     // (many lines will be continuation lines in multiline entries)
-    if (matchCount >= 5) return 95; // Need more matches than triple-pipe
-    if (matchCount >= 3) return 80;
-    if (matchCount >= 2) return 60;
+    if (matchCount >= 3) return 98; // Higher priority than single-pipe
+    if (matchCount >= 2) return 85;
+    if (matchCount >= 1) return 65;
 
     return 0;
   }
@@ -80,7 +80,7 @@ export class PipeWindowsParser extends BaseParser {
           },
         };
       } else {
-        // Continuation line - append to current entry
+        // Continuation line - append to current entry (multiline JSON, stack traces, etc.)
         if (currentEntry) {
           currentEntry.raw += '\n' + trimmedLine;
           currentEntry.message = (currentEntry.message || '') + '\n' + trimmedLine;

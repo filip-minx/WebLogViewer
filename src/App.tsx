@@ -127,6 +127,9 @@ function App() {
     setFilteredEntries(filtered);
   }, [parsedEntries, filterState]);
 
+  // Check if we're in raw display mode
+  const isRawDisplay = parsedEntries.length === 1 && parsedEntries[0].fields._displayMode === 'raw';
+
   return (
     <ErrorBoundary>
       <div className="app">
@@ -146,7 +149,7 @@ function App() {
           </div>
         </header>
 
-        <main className="app-main">
+        <main className={`app-main ${isRawDisplay ? 'raw-mode' : ''}`}>
           <aside className="sidebar">
             <FileTree
               entries={zipEntries}
@@ -160,6 +163,10 @@ function App() {
               <div className="empty-state">
                 <p>Select a log file from the tree to view its contents</p>
               </div>
+            ) : isRawDisplay ? (
+              <div className="raw-content-viewer">
+                <pre className="raw-content">{parsedEntries[0].raw}</pre>
+              </div>
             ) : (
               <LogTable
                 entries={filteredEntries}
@@ -169,7 +176,7 @@ function App() {
             )}
           </section>
 
-          {columns.length > 0 && (
+          {columns.length > 0 && !isRawDisplay && (
             <aside className="filter-sidebar">
               <FilterPanel
                 columns={columns}
