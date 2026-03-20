@@ -94,7 +94,6 @@ export class JsonLinesParser extends BaseParser {
 
   columns(): ColumnDef[] {
     const baseColumns: ColumnDef[] = [
-      { id: 'lineNumber', header: 'Line', type: 'number' },
       { id: 'timestamp', header: 'Timestamp', type: 'timestamp', filterMode: 'range' },
       { id: 'level', header: 'Level', type: 'text', filterMode: 'contains' },
       { id: 'source', header: 'Source', type: 'text', filterMode: 'contains' },

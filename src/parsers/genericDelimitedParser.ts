@@ -108,19 +108,15 @@ export class GenericDelimitedParser extends BaseParser {
   columns(): ColumnDef[] {
     if (this.headers.length === 0) {
       return [
-        { id: 'lineNumber', header: 'Line', type: 'number' },
         { id: 'raw', header: 'Content', type: 'text', filterMode: 'contains' },
       ];
     }
 
-    return [
-      { id: 'lineNumber', header: 'Line', type: 'number' },
-      ...this.headers.map(header => ({
-        id: `fields.${header}`,
-        header,
-        type: 'text' as const,
-        filterMode: 'contains' as const,
-      })),
-    ];
+    return this.headers.map(header => ({
+      id: `fields.${header}`,
+      header,
+      type: 'text' as const,
+      filterMode: 'contains' as const,
+    }));
   }
 }

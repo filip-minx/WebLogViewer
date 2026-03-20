@@ -105,7 +105,6 @@ export class TriplePipeParser extends BaseParser {
 
   columns(): ColumnDef[] {
     return [
-      { id: 'lineNumber', header: 'Line', type: 'number' },
       { id: 'timestamp', header: 'Timestamp', type: 'timestamp', filterMode: 'range' },
       {
         id: 'level',

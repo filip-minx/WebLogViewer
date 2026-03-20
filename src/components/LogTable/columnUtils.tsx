@@ -58,7 +58,7 @@ export function createTableColumns(columns: AppColumnDef[]) {
 
           return strValue;
         },
-        size: col.id === 'lineNumber' ? 80 : col.id === 'message' ? 500 : 200,
+        size: col.id === 'message' ? 500 : 200,
       }
     );
   });

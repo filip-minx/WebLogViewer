@@ -34,7 +34,6 @@ export class RawTextParser extends BaseParser {
 
   columns(): ColumnDef[] {
     return [
-      { id: 'lineNumber', header: 'Line', type: 'number' },
       { id: 'raw', header: 'Content', type: 'text', filterMode: 'contains' },
     ];
   }
