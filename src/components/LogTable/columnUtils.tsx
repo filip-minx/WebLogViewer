@@ -59,6 +59,9 @@ export function createTableColumns(columns: AppColumnDef[]) {
           return strValue;
         },
         size: col.id === 'message' ? 500 : 200,
+        minSize: 80,
+        maxSize: 2000,
+        enableResizing: true,
       }
     );
   });

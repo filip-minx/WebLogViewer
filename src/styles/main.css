@@ -246,6 +246,7 @@ body {
   font-size: 13px;
   font-family: var(--font-mono);
   min-width: 100%;
+  table-layout: fixed;
 }
 
 .log-table thead {
