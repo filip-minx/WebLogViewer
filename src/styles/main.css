@@ -338,27 +338,7 @@ body {
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-}
-
-.level-error {
-  background: #fee;
-  color: var(--color-error);
-}
-
-.level-warn {
-  background: #fef3cd;
-  color: #856404;
-}
-
-.level-info {
-  background: #d1ecf1;
-  color: #0c5460;
-}
-
-.level-debug,
-.level-trace {
-  background: var(--color-bg-alt);
-  color: var(--color-text-muted);
+  color: var(--color-text);
 }
 
 /* Filter Panel */
