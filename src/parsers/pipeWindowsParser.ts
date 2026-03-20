@@ -67,7 +67,7 @@ export class PipeWindowsParser extends BaseParser {
         currentEntry = {
           rowId: this.generateRowId(lineNumber, timestamp),
           lineNumber,
-          raw: trimmedLine,
+          raw: line,
           timestamp,
           level,
           source,
@@ -80,17 +80,17 @@ export class PipeWindowsParser extends BaseParser {
           },
         };
       } else {
-        // Continuation line - append to current entry
+        // Continuation line - append to current entry (preserve original whitespace)
         if (currentEntry) {
-          currentEntry.raw += '\n' + trimmedLine;
-          currentEntry.message = (currentEntry.message || '') + '\n' + trimmedLine;
+          currentEntry.raw += '\n' + line;
+          currentEntry.message = (currentEntry.message || '') + '\n' + line;
           currentEntry.fields.message = currentEntry.message;
         } else {
           // No current entry - treat as standalone raw entry
           currentEntry = {
             rowId: this.generateRowId(lineNumber),
             lineNumber,
-            raw: trimmedLine,
+            raw: line,
             fields: {},
           };
         }

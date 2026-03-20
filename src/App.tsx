@@ -3,7 +3,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { FileTree } from './components/FileTree/FileTree';
 import { LogTable } from './components/LogTable/LogTable';
 import { FilterPanel } from './components/FilterPanel/FilterPanel';
-import { RowDetails } from './components/RowDetails/RowDetails';
+import { MessagePanel } from './components/MessagePanel/MessagePanel';
 import { StatusBar } from './components/StatusBar/StatusBar';
 import { ZipService } from './services/zipService';
 import { ParseService } from './services/parseService';
@@ -158,21 +158,28 @@ function App() {
             />
           </aside>
 
-          <section className="content">
-            {parsedEntries.length === 0 && parseState?.status !== 'parsing' ? (
-              <div className="empty-state">
-                <p>Select a log file from the tree to view its contents</p>
+          <section className="content-area">
+            <div className="table-area">
+              {parsedEntries.length === 0 && parseState?.status !== 'parsing' ? (
+                <div className="empty-state">
+                  <p>Select a log file from the tree to view its contents</p>
+                </div>
+              ) : isRawDisplay ? (
+                <div className="raw-content-viewer">
+                  <pre className="raw-content">{parsedEntries[0].raw}</pre>
+                </div>
+              ) : (
+                <LogTable
+                  entries={filteredEntries}
+                  columns={columns}
+                  onRowSelect={setSelectedEntry}
+                />
+              )}
+            </div>
+            {!isRawDisplay && parsedEntries.length > 0 && (
+              <div className="message-area">
+                <MessagePanel entry={selectedEntry} />
               </div>
-            ) : isRawDisplay ? (
-              <div className="raw-content-viewer">
-                <pre className="raw-content">{parsedEntries[0].raw}</pre>
-              </div>
-            ) : (
-              <LogTable
-                entries={filteredEntries}
-                columns={columns}
-                onRowSelect={setSelectedEntry}
-              />
             )}
           </section>
 
@@ -195,7 +202,6 @@ function App() {
           />
         </footer>
 
-        <RowDetails entry={selectedEntry} onClose={() => setSelectedEntry(null)} />
       </div>
     </ErrorBoundary>
   );

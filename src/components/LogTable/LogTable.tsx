@@ -19,6 +19,7 @@ interface LogTableProps {
 export const LogTable: React.FC<LogTableProps> = ({ entries, columns, onRowSelect }) => {
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [focusedRowIndex, setFocusedRowIndex] = React.useState<number>(-1);
 
   const tableColumns = useMemo(() => createTableColumns(columns), [columns]);
 
@@ -51,6 +52,41 @@ export const LogTable: React.FC<LogTableProps> = ({ entries, columns, onRowSelec
     virtualRows.length > 0
       ? totalSize - (virtualRows[virtualRows.length - 1]?.end || 0)
       : 0;
+
+  // Handle keyboard navigation
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (rows.length === 0) return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const newIndex = Math.min(focusedRowIndex + 1, rows.length - 1);
+        setFocusedRowIndex(newIndex);
+        onRowSelect(rows[newIndex].original);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const newIndex = Math.max(focusedRowIndex - 1, 0);
+        setFocusedRowIndex(newIndex);
+        onRowSelect(rows[newIndex].original);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [focusedRowIndex, rows, onRowSelect]);
+
+  // Auto-select first row on entries change
+  React.useEffect(() => {
+    if (rows.length > 0 && focusedRowIndex === -1) {
+      setFocusedRowIndex(0);
+      onRowSelect(rows[0].original);
+    }
+  }, [rows, focusedRowIndex, onRowSelect]);
+
+  const handleRowClick = (index: number, entry: ParsedLogEntry) => {
+    setFocusedRowIndex(index);
+    onRowSelect(entry);
+  };
 
   if (entries.length === 0) {
     return (
@@ -94,11 +130,12 @@ export const LogTable: React.FC<LogTableProps> = ({ entries, columns, onRowSelec
           )}
           {virtualRows.map(virtualRow => {
             const row = rows[virtualRow.index];
+            const isFocused = virtualRow.index === focusedRowIndex;
             return (
               <tr
                 key={row.id}
-                onClick={() => onRowSelect(row.original)}
-                className="data-row"
+                onClick={() => handleRowClick(virtualRow.index, row.original)}
+                className={`data-row ${isFocused ? 'focused' : ''}`}
               >
                 {row.getVisibleCells().map(cell => (
                   <td key={cell.id} style={{ width: cell.column.getSize() }}>
