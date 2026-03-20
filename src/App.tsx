@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { FileTree } from './components/FileTree/FileTree';
 import { LogTable } from './components/LogTable/LogTable';
-import { FilterPanel } from './components/FilterPanel/FilterPanel';
+import { GlobalSearch } from './components/FilterPanel/GlobalSearch';
 import { MessagePanel } from './components/MessagePanel/MessagePanel';
 import { ResizeHandle } from './components/ResizeHandle/ResizeHandle';
 import { StatusBar } from './components/StatusBar/StatusBar';
@@ -52,13 +52,6 @@ function App() {
     defaultSize: 250,
     minSize: 150,
     maxSize: 500,
-  });
-
-  const filterResize = useResizable({
-    storageKey: 'weblog-filter-width',
-    defaultSize: 300,
-    minSize: 200,
-    maxSize: 600,
   });
 
   const messageResize = useResizable({
@@ -151,6 +144,14 @@ function App() {
     setFilteredEntries(filtered);
   }, [parsedEntries, filterState]);
 
+  // Handle global search change
+  const handleGlobalSearchChange = (value: string) => {
+    setFilterState({
+      ...filterState,
+      globalSearch: value,
+    });
+  };
+
   // Check if we're in raw display mode
   const isRawDisplay = parsedEntries.length === 1 && parsedEntries[0].fields._displayMode === 'raw';
 
@@ -168,6 +169,14 @@ function App() {
             }}
             className="file-input"
           />
+          {parsedEntries.length > 0 && !isRawDisplay && (
+            <div className="header-search">
+              <GlobalSearch
+                value={filterState.globalSearch}
+                onChange={handleGlobalSearchChange}
+              />
+            </div>
+          )}
           <div className="privacy-notice">
             🔒 Privacy: All processing happens locally in your browser
           </div>
@@ -205,6 +214,8 @@ function App() {
                 <LogTable
                   entries={filteredEntries}
                   columns={columns}
+                  filterState={filterState}
+                  onFilterChange={setFilterState}
                   onRowSelect={setSelectedEntry}
                 />
               )}
@@ -224,24 +235,6 @@ function App() {
               </>
             )}
           </section>
-
-          {/* Filter sidebar with resize handle */}
-          {columns.length > 0 && !isRawDisplay && (
-            <>
-              <ResizeHandle
-                direction="horizontal"
-                onMouseDown={(e) => filterResize.startResize(e, 'horizontal', true)}
-                isResizing={filterResize.isResizing}
-              />
-              <aside className="filter-sidebar" style={{ width: `${filterResize.size}px` }}>
-                <FilterPanel
-                  columns={columns}
-                  filterState={filterState}
-                  onFilterChange={setFilterState}
-                />
-              </aside>
-            </>
-          )}
         </main>
 
         <footer className="app-footer">

@@ -1,37 +1,42 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useState } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
-  getSortedRowModel,
   flexRender,
-  SortingState,
 } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import type { ParsedLogEntry, ColumnDef } from '../../models/types';
+import type { ParsedLogEntry, ColumnDef, FilterState } from '../../models/types';
 import { createTableColumns } from './columnUtils';
+import { ColumnFilterPopup } from '../ColumnFilterPopup/ColumnFilterPopup';
 
 interface LogTableProps {
   entries: ParsedLogEntry[];
   columns: ColumnDef[];
+  filterState: FilterState;
+  onFilterChange: (filterState: FilterState) => void;
   onRowSelect: (entry: ParsedLogEntry) => void;
 }
 
-export const LogTable: React.FC<LogTableProps> = ({ entries, columns, onRowSelect }) => {
+export const LogTable: React.FC<LogTableProps> = ({
+  entries,
+  columns,
+  filterState,
+  onFilterChange,
+  onRowSelect,
+}) => {
   const tableContainerRef = useRef<HTMLDivElement>(null);
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [focusedRowIndex, setFocusedRowIndex] = React.useState<number>(-1);
+  const [focusedRowIndex, setFocusedRowIndex] = useState<number>(-1);
+  const [filterPopup, setFilterPopup] = useState<{
+    column: ColumnDef;
+    anchorElement: HTMLElement;
+  } | null>(null);
 
   const tableColumns = useMemo(() => createTableColumns(columns), [columns]);
 
   const table = useReactTable({
     data: entries,
     columns: tableColumns,
-    state: {
-      sorting,
-    },
-    onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
   });
 
   const { rows } = table.getRowModel();
@@ -88,6 +93,38 @@ export const LogTable: React.FC<LogTableProps> = ({ entries, columns, onRowSelec
     onRowSelect(entry);
   };
 
+  const handleColumnHeaderClick = (e: React.MouseEvent, columnId: string) => {
+    e.stopPropagation();
+    const column = columns.find(c => c.id === columnId);
+    if (column && column.filterMode) {
+      setFilterPopup({
+        column,
+        anchorElement: e.currentTarget as HTMLElement,
+      });
+    }
+  };
+
+  const handleFilterChange = (columnId: string, value: any) => {
+    const newColumnFilters = { ...filterState.columnFilters };
+
+    // Check if filter should be removed
+    const shouldRemove =
+      !value ||
+      (Array.isArray(value) && value.length === 0) ||
+      (typeof value === 'object' && !Array.isArray(value) && !value.start && !value.end);
+
+    if (shouldRemove) {
+      delete newColumnFilters[columnId];
+    } else {
+      newColumnFilters[columnId] = value;
+    }
+
+    onFilterChange({
+      ...filterState,
+      columnFilters: newColumnFilters,
+    });
+  };
+
   if (entries.length === 0) {
     return (
       <div className="log-table-empty">
@@ -102,23 +139,25 @@ export const LogTable: React.FC<LogTableProps> = ({ entries, columns, onRowSelec
         <thead>
           {table.getHeaderGroups().map(headerGroup => (
             <tr key={headerGroup.id}>
-              {headerGroup.headers.map(header => (
-                <th
-                  key={header.id}
-                  style={{ width: header.getSize() }}
-                  className={header.column.getCanSort() ? 'sortable' : ''}
-                  onClick={header.column.getToggleSortingHandler()}
-                >
-                  <div className="header-content">
-                    {flexRender(header.column.columnDef.header, header.getContext())}
-                    {header.column.getIsSorted() && (
-                      <span className="sort-indicator">
-                        {header.column.getIsSorted() === 'asc' ? ' ↑' : ' ↓'}
-                      </span>
-                    )}
-                  </div>
-                </th>
-              ))}
+              {headerGroup.headers.map(header => {
+                const columnDef = columns.find(c => c.id === header.id);
+                const hasFilter = columnDef?.filterMode && filterState.columnFilters[header.id];
+                const isFilterable = columnDef?.filterMode;
+
+                return (
+                  <th
+                    key={header.id}
+                    style={{ width: header.getSize() }}
+                    className={isFilterable ? 'filterable' : ''}
+                    onClick={(e) => isFilterable && handleColumnHeaderClick(e, header.id)}
+                  >
+                    <div className="header-content">
+                      {flexRender(header.column.columnDef.header, header.getContext())}
+                      {hasFilter && <span className="filter-indicator">●</span>}
+                    </div>
+                  </th>
+                );
+              })}
             </tr>
           ))}
         </thead>
@@ -152,6 +191,17 @@ export const LogTable: React.FC<LogTableProps> = ({ entries, columns, onRowSelec
           )}
         </tbody>
       </table>
+
+      {/* Filter popup */}
+      {filterPopup && (
+        <ColumnFilterPopup
+          column={filterPopup.column}
+          filterValue={filterState.columnFilters[filterPopup.column.id]}
+          onFilterChange={(value) => handleFilterChange(filterPopup.column.id, value)}
+          onClose={() => setFilterPopup(null)}
+          anchorElement={filterPopup.anchorElement}
+        />
+      )}
     </div>
   );
 };
