@@ -69,7 +69,6 @@ function App() {
   // UI state
   const [selectedEntry, setSelectedEntry] = useState<ParsedLogEntry | null>(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
-  const [isFileMenuOpen, setIsFileMenuOpen] = useState(false);
 
   // Services
   const zipService = useRef(new ZipService()).current;
@@ -232,6 +231,11 @@ function App() {
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+O to open file
+      if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+        e.preventDefault();
+        document.getElementById('zip-file-input')?.click();
+      }
       // Ctrl+F or Cmd+F to open search
       if ((e.ctrlKey || e.metaKey) && e.key === 'f' && parsedEntries.length > 0 && !isRawDisplay) {
         e.preventDefault();
@@ -253,44 +257,34 @@ function App() {
         <main className="app-main">
           {/* Side Panel */}
           <aside className="side-panel" style={{ width: `${sidebarResize.size}px` }}>
-            <div className="side-panel-content">
-              {/* Collapsable File Menu */}
-              <div className="side-menu-section">
-                <button
-                  className="side-menu-toggle"
-                  onClick={() => setIsFileMenuOpen(!isFileMenuOpen)}
-                  title="Menu"
-                >
-                  <span className="hamburger-icon">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                  </span>
-                </button>
-                {isFileMenuOpen && (
-                  <div className="side-menu-content">
-                    <label className="file-menu-item" htmlFor="zip-file-input">
-                      <span className="menu-icon">📁</span>
-                      <span>Open ZIP Archive</span>
-                    </label>
-                    <input
-                      type="file"
-                      accept=".zip"
-                      onChange={e => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          handleFileSelect(file);
-                          setIsFileMenuOpen(false);
-                        }
-                      }}
-                      className="file-input-hidden"
-                      id="zip-file-input"
-                    />
-                  </div>
-                )}
-              </div>
+            {/* Toolbar */}
+            <div className="sidebar-toolbar">
+              <label className="toolbar-action" htmlFor="zip-file-input" title="Open ZIP archive (Ctrl+O)">
+                <span className="action-label">LOAD</span>
+                <span className="action-shortcut">Ctrl+O</span>
+              </label>
+              <input
+                type="file"
+                accept=".zip"
+                onChange={e => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    handleFileSelect(file);
+                  }
+                }}
+                className="file-input-hidden"
+                id="zip-file-input"
+              />
+              {zipFile && (
+                <div className="toolbar-context">
+                  <span className="context-label">ARCHIVE:</span>
+                  <span className="context-value">{zipFile.name}</span>
+                </div>
+              )}
+            </div>
 
-              {/* File Tree */}
+            {/* File Tree */}
+            <div className="side-panel-content">
               <FileTree
                 entries={zipEntries}
                 selectedPaths={selectedFilePaths}

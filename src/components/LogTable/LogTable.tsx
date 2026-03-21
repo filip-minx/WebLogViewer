@@ -134,7 +134,7 @@ export const LogTable: React.FC<LogTableProps> = ({
 
   return (
     <div ref={tableContainerRef} className="log-table-container">
-      <table className="log-table" style={{ width: table.getTotalSize() }}>
+      <table className="log-table">
         <thead>
           {table.getHeaderGroups().map(headerGroup => (
             <tr key={headerGroup.id}>
