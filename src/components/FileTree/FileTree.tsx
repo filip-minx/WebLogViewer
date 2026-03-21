@@ -4,8 +4,8 @@ import { FileTreeNode } from './FileTreeNode';
 
 interface FileTreeProps {
   entries: ZipEntryMetadata[];
-  selectedPath: string | null;
-  onFileSelect: (path: string) => void;
+  selectedPaths: string[];
+  onFileSelect: (paths: string[]) => void;
 }
 
 interface TreeNode {
@@ -16,7 +16,7 @@ interface TreeNode {
   children: Map<string, TreeNode>;
 }
 
-export const FileTree: React.FC<FileTreeProps> = ({ entries, selectedPath, onFileSelect }) => {
+export const FileTree: React.FC<FileTreeProps> = ({ entries, selectedPaths, onFileSelect }) => {
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set(['/']));
 
   const tree = useMemo(() => buildTree(entries), [entries]);
@@ -33,6 +33,20 @@ export const FileTree: React.FC<FileTreeProps> = ({ entries, selectedPath, onFil
     });
   };
 
+  const handleFileSelect = (path: string, isCtrlClick: boolean) => {
+    if (isCtrlClick) {
+      // Toggle selection
+      if (selectedPaths.includes(path)) {
+        onFileSelect(selectedPaths.filter(p => p !== path));
+      } else {
+        onFileSelect([...selectedPaths, path]);
+      }
+    } else {
+      // Replace selection
+      onFileSelect([path]);
+    }
+  };
+
   if (entries.length === 0) {
     return (
       <div className="file-tree-empty">
@@ -43,13 +57,18 @@ export const FileTree: React.FC<FileTreeProps> = ({ entries, selectedPath, onFil
 
   return (
     <div className="file-tree">
+      {entries.length > 0 && (
+        <div className="file-tree-hint">
+          💡 Ctrl+Click to select multiple files
+        </div>
+      )}
       <FileTreeNode
         node={tree}
         level={0}
         expandedPaths={expandedPaths}
-        selectedPath={selectedPath}
+        selectedPaths={selectedPaths}
         onToggleExpand={toggleExpand}
-        onFileSelect={onFileSelect}
+        onFileSelect={handleFileSelect}
       />
     </div>
   );

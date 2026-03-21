@@ -13,28 +13,28 @@ interface FileTreeNodeProps {
   node: TreeNode;
   level: number;
   expandedPaths: Set<string>;
-  selectedPath: string | null;
+  selectedPaths: string[];
   onToggleExpand: (path: string) => void;
-  onFileSelect: (path: string) => void;
+  onFileSelect: (path: string, isCtrlClick: boolean) => void;
 }
 
 export const FileTreeNode: React.FC<FileTreeNodeProps> = ({
   node,
   level,
   expandedPaths,
-  selectedPath,
+  selectedPaths,
   onToggleExpand,
   onFileSelect,
 }) => {
   const isExpanded = expandedPaths.has(node.path);
-  const isSelected = selectedPath === node.path;
+  const isSelected = selectedPaths.includes(node.path);
   const hasChildren = node.children.size > 0;
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent) => {
     if (node.isDirectory) {
       onToggleExpand(node.path);
     } else {
-      onFileSelect(node.path);
+      onFileSelect(node.path, e.ctrlKey || e.metaKey);
     }
   };
 
@@ -70,7 +70,7 @@ export const FileTreeNode: React.FC<FileTreeNodeProps> = ({
                 node={child}
                 level={level + 1}
                 expandedPaths={expandedPaths}
-                selectedPath={selectedPath}
+                selectedPaths={selectedPaths}
                 onToggleExpand={onToggleExpand}
                 onFileSelect={onFileSelect}
               />

@@ -19,13 +19,40 @@ import type {
 } from './models/types';
 import './styles/main.css';
 
+// Merge log entries from multiple files, sorted by timestamp
+function mergeLogEntries(
+  files: Array<{ path: string; entries: ParsedLogEntry[]; columns: ColumnDef[] }>
+): ParsedLogEntry[] {
+  const allEntries: ParsedLogEntry[] = [];
+
+  for (const file of files) {
+    allEntries.push(...file.entries);
+  }
+
+  // Sort by timestamp if available
+  allEntries.sort((a, b) => {
+    if (!a.timestamp || !b.timestamp) {
+      // If no timestamp, maintain original order
+      return 0;
+    }
+    return a.timestamp.localeCompare(b.timestamp);
+  });
+
+  // Reassign rowIds to maintain unique identifiers
+  return allEntries.map((entry, index) => ({
+    ...entry,
+    rowId: `merged-${index}`,
+    lineNumber: index + 1,
+  }));
+}
+
 function App() {
   // ZIP file state
   const [zipFile, setZipFile] = useState<File | null>(null);
   const [zipEntries, setZipEntries] = useState<ZipEntryMetadata[]>([]);
 
   // Selected file state
-  const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
+  const [selectedFilePaths, setSelectedFilePaths] = useState<string[]>([]);
 
   // Parsing state
   const [parseState, setParseState] = useState<FileParseState | null>(null);
@@ -66,7 +93,7 @@ function App() {
     try {
       setZipFile(file);
       setZipEntries([]);
-      setSelectedFilePath(null);
+      setSelectedFilePaths([]);
       setParsedEntries([]);
       setColumns([]);
       setParseState(null);
@@ -80,52 +107,97 @@ function App() {
   };
 
   // Handle file selection from tree
-  const handleTreeFileSelect = async (path: string) => {
-    if (!zipFile) return;
+  const handleTreeFileSelect = async (paths: string[]) => {
+    if (!zipFile || paths.length === 0) return;
 
-    setSelectedFilePath(path);
+    setSelectedFilePaths(paths);
     setParsedEntries([]);
     setColumns([]);
     setFilterState({ globalSearch: '', columnFilters: {} });
 
+    const fileLabel = paths.length === 1 ? paths[0] : `${paths.length} files`;
     setParseState({
-      fileName: path,
+      fileName: fileLabel,
       status: 'detecting',
       progress: 0,
     });
 
     try {
-      // Extract file content
-      const content = await zipService.extractFile(zipFile, path);
+      // Parse all selected files
+      const allParsedFiles: Array<{ path: string; entries: ParsedLogEntry[]; columns: ColumnDef[] }> = [];
 
-      // Parse file
-      const result = await parseService.parseFile(content, path, progress => {
-        if (progress.parserId && progress.parserName && progress.columns) {
-          setParseState({
-            fileName: path,
-            status: 'parsing',
-            progress: progress.progress,
-            parserId: progress.parserId,
-            parserName: progress.parserName,
-          });
-          setColumns(progress.columns);
-        }
+      for (let i = 0; i < paths.length; i++) {
+        const path = paths[i];
+        const content = await zipService.extractFile(zipFile, path);
 
-        setParsedEntries(progress.entries);
-      });
+        let fileEntries: ParsedLogEntry[] = [];
+        let fileColumns: ColumnDef[] = [];
+        let parserId = '';
+        let parserName = '';
+
+        await parseService.parseFile(content, path, progress => {
+          if (progress.parserId && progress.parserName && progress.columns) {
+            parserId = progress.parserId;
+            parserName = progress.parserName;
+            fileColumns = progress.columns;
+          }
+          fileEntries = progress.entries;
+        });
+
+        // Add source file to each entry
+        const entriesWithSource = fileEntries.map(entry => ({
+          ...entry,
+          fields: {
+            ...entry.fields,
+            _sourceFile: path,
+          },
+        }));
+
+        allParsedFiles.push({
+          path,
+          entries: entriesWithSource,
+          columns: fileColumns,
+        });
+
+        setParseState({
+          fileName: fileLabel,
+          status: 'parsing',
+          progress: ((i + 1) / paths.length) * 100,
+          parserId,
+          parserName,
+        });
+      }
+
+      // Merge entries from all files
+      const mergedEntries = mergeLogEntries(allParsedFiles);
+
+      // Use columns from first file and add source column
+      const baseColumns = allParsedFiles[0]?.columns || [];
+      const columnsWithSource: ColumnDef[] = [
+        ...baseColumns,
+        {
+          id: 'fields._sourceFile',
+          header: 'Source File',
+          type: 'text',
+          filterMode: 'contains',
+        },
+      ];
+
+      setParsedEntries(mergedEntries);
+      setColumns(columnsWithSource);
 
       setParseState({
-        fileName: path,
+        fileName: fileLabel,
         status: 'complete',
         progress: 100,
-        parserId: result.parserId,
-        parserName: result.parserName,
-        totalEntries: result.totalEntries,
+        parserId: allParsedFiles[0]?.columns ? 'merged' : 'unknown',
+        parserName: paths.length === 1 ? 'Single File' : 'Merged Files',
+        totalEntries: mergedEntries.length,
       });
     } catch (error) {
-      console.error('Failed to parse file:', error);
+      console.error('Failed to parse files:', error);
       setParseState({
-        fileName: path,
+        fileName: fileLabel,
         status: 'error',
         progress: 0,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -187,7 +259,7 @@ function App() {
           <aside className="sidebar" style={{ width: `${sidebarResize.size}px` }}>
             <FileTree
               entries={zipEntries}
-              selectedPath={selectedFilePath}
+              selectedPaths={selectedFilePaths}
               onFileSelect={handleTreeFileSelect}
             />
           </aside>
