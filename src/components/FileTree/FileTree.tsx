@@ -57,11 +57,6 @@ export const FileTree: React.FC<FileTreeProps> = ({ entries, selectedPaths, onFi
 
   return (
     <div className="file-tree">
-      {entries.length > 0 && (
-        <div className="file-tree-hint">
-          💡 Ctrl+Click to select multiple files
-        </div>
-      )}
       <FileTreeNode
         node={tree}
         level={0}

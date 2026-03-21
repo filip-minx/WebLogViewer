@@ -68,6 +68,8 @@ function App() {
 
   // UI state
   const [selectedEntry, setSelectedEntry] = useState<ParsedLogEntry | null>(null);
+  const [showSearchModal, setShowSearchModal] = useState(false);
+  const [isFileMenuOpen, setIsFileMenuOpen] = useState(false);
 
   // Services
   const zipService = useRef(new ZipService()).current;
@@ -227,51 +229,73 @@ function App() {
   // Check if we're in raw display mode
   const isRawDisplay = parsedEntries.length === 1 && parsedEntries[0].fields._displayMode === 'raw';
 
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+F or Cmd+F to open search
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f' && parsedEntries.length > 0 && !isRawDisplay) {
+        e.preventDefault();
+        setShowSearchModal(true);
+      }
+      // Escape to close search
+      if (e.key === 'Escape' && showSearchModal) {
+        setShowSearchModal(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [parsedEntries.length, isRawDisplay, showSearchModal]);
+
   return (
     <ErrorBoundary>
       <div className="app">
         <main className="app-main">
           {/* Side Panel */}
           <aside className="side-panel" style={{ width: `${sidebarResize.size}px` }}>
-            <div className="side-panel-header">
-              <h1>WebLogAnalyzer</h1>
-            </div>
-
             <div className="side-panel-content">
-              <div className="file-selector">
-                <label className="file-selector-label">Open ZIP Archive</label>
-                <input
-                  type="file"
-                  accept=".zip"
-                  onChange={e => {
-                    const file = e.target.files?.[0];
-                    if (file) handleFileSelect(file);
-                  }}
-                  className="file-input"
-                  id="zip-file-input"
-                />
+              {/* Collapsable File Menu */}
+              <div className="side-menu-section">
+                <button
+                  className="side-menu-toggle"
+                  onClick={() => setIsFileMenuOpen(!isFileMenuOpen)}
+                  title="Menu"
+                >
+                  <span className="hamburger-icon">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </span>
+                </button>
+                {isFileMenuOpen && (
+                  <div className="side-menu-content">
+                    <label className="file-menu-item" htmlFor="zip-file-input">
+                      <span className="menu-icon">📁</span>
+                      <span>Open ZIP Archive</span>
+                    </label>
+                    <input
+                      type="file"
+                      accept=".zip"
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          handleFileSelect(file);
+                          setIsFileMenuOpen(false);
+                        }
+                      }}
+                      className="file-input-hidden"
+                      id="zip-file-input"
+                    />
+                  </div>
+                )}
               </div>
 
-              {parsedEntries.length > 0 && !isRawDisplay && (
-                <div className="side-panel-search">
-                  <GlobalSearch
-                    value={filterState.globalSearch}
-                    onChange={handleGlobalSearchChange}
-                  />
-                </div>
-              )}
-
+              {/* File Tree */}
               <FileTree
                 entries={zipEntries}
                 selectedPaths={selectedFilePaths}
                 onFileSelect={handleTreeFileSelect}
               />
-            </div>
-
-            <div className="side-panel-footer">
-              <div className="privacy-notice">
-                🔒 All processing happens locally in your browser
-              </div>
             </div>
           </aside>
 
@@ -284,6 +308,27 @@ function App() {
 
           {/* Content area */}
           <section className="content-area">
+            {/* Search Popup (Ctrl+F) */}
+            {showSearchModal && (
+              <div className="search-popup">
+                <div className="search-popup-header">
+                  <span>Search</span>
+                  <button
+                    className="search-popup-close"
+                    onClick={() => setShowSearchModal(false)}
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="search-popup-content">
+                  <GlobalSearch
+                    value={filterState.globalSearch}
+                    onChange={handleGlobalSearchChange}
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="table-area">
               {parsedEntries.length === 0 && parseState?.status !== 'parsing' ? (
                 <div className="empty-state">
