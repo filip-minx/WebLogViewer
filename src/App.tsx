@@ -76,9 +76,9 @@ function App() {
   // Resizable panels
   const sidebarResize = useResizable({
     storageKey: 'weblog-sidebar-width',
-    defaultSize: 250,
-    minSize: 150,
-    maxSize: 500,
+    defaultSize: 320,
+    minSize: 280,
+    maxSize: 600,
   });
 
   const messageResize = useResizable({
@@ -230,38 +230,49 @@ function App() {
   return (
     <ErrorBoundary>
       <div className="app">
-        <header className="app-header">
-          <h1>WebLogAnalyzer</h1>
-          <input
-            type="file"
-            accept=".zip"
-            onChange={e => {
-              const file = e.target.files?.[0];
-              if (file) handleFileSelect(file);
-            }}
-            className="file-input"
-          />
-          {parsedEntries.length > 0 && !isRawDisplay && (
-            <div className="header-search">
-              <GlobalSearch
-                value={filterState.globalSearch}
-                onChange={handleGlobalSearchChange}
+        <main className="app-main">
+          {/* Side Panel */}
+          <aside className="side-panel" style={{ width: `${sidebarResize.size}px` }}>
+            <div className="side-panel-header">
+              <h1>WebLogAnalyzer</h1>
+            </div>
+
+            <div className="side-panel-content">
+              <div className="file-selector">
+                <label className="file-selector-label">Open ZIP Archive</label>
+                <input
+                  type="file"
+                  accept=".zip"
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (file) handleFileSelect(file);
+                  }}
+                  className="file-input"
+                  id="zip-file-input"
+                />
+              </div>
+
+              {parsedEntries.length > 0 && !isRawDisplay && (
+                <div className="side-panel-search">
+                  <GlobalSearch
+                    value={filterState.globalSearch}
+                    onChange={handleGlobalSearchChange}
+                  />
+                </div>
+              )}
+
+              <FileTree
+                entries={zipEntries}
+                selectedPaths={selectedFilePaths}
+                onFileSelect={handleTreeFileSelect}
               />
             </div>
-          )}
-          <div className="privacy-notice">
-            🔒 Privacy: All processing happens locally in your browser
-          </div>
-        </header>
 
-        <main className="app-main">
-          {/* Sidebar */}
-          <aside className="sidebar" style={{ width: `${sidebarResize.size}px` }}>
-            <FileTree
-              entries={zipEntries}
-              selectedPaths={selectedFilePaths}
-              onFileSelect={handleTreeFileSelect}
-            />
+            <div className="side-panel-footer">
+              <div className="privacy-notice">
+                🔒 All processing happens locally in your browser
+              </div>
+            </div>
           </aside>
 
           {/* Sidebar resize handle */}

@@ -1,5 +1,6 @@
 // Convert ColumnDef to TanStack Table columns
 
+import React from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
 import type { ColumnDef as AppColumnDef } from '../../models/types';
 import type { ParsedLogEntry } from '../../models/types';
