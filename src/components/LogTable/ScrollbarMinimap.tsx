@@ -94,9 +94,9 @@ export const ScrollbarMinimap: React.FC<ScrollbarMinimapProps> = ({
       let color = 'rgba(255, 255, 255, 0.15)'; // default
 
       if (level === 'error') {
-        color = '#ff5555';
+        color = '#ff2222';
       } else if (level === 'warn' || level === 'warning') {
-        color = '#fb923c';
+        color = '#ffaa00';
       } else if (level === 'info') {
         color = '#06b6d4';
       } else if (level === 'debug' || level === 'trace') {
