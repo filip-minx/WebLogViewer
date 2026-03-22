@@ -37,6 +37,10 @@ export const LogTable: React.FC<LogTableProps> = ({
 
   const tableColumns = useMemo(() => createTableColumns(columns), [columns]);
   const [columnResizeMode] = useState<ColumnResizeMode>('onChange');
+  const [columnSizing, setColumnSizing] = useState<Record<string, number>>(() => {
+    const stored = localStorage.getItem('weblog-column-sizing');
+    return stored ? JSON.parse(stored) : {};
+  });
 
   const table = useReactTable({
     data: entries,
@@ -45,6 +49,10 @@ export const LogTable: React.FC<LogTableProps> = ({
     columnResizeMode,
     columnResizeDirection: 'ltr',
     enableColumnResizing: true,
+    state: {
+      columnSizing,
+    },
+    onColumnSizingChange: setColumnSizing,
   });
 
   const { rows } = table.getRowModel();
@@ -95,6 +103,11 @@ export const LogTable: React.FC<LogTableProps> = ({
       setHeaderHeight(height);
     }
   }, [columns]);
+
+  // Persist column sizing to localStorage
+  React.useEffect(() => {
+    localStorage.setItem('weblog-column-sizing', JSON.stringify(columnSizing));
+  }, [columnSizing]);
 
   // Auto-select first row on entries change
   React.useEffect(() => {
