@@ -9,6 +9,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import type { ParsedLogEntry, ColumnDef, FilterState } from '../../models/types';
 import { createTableColumns } from './columnUtils';
 import { ColumnFilterPopup } from '../ColumnFilterPopup/ColumnFilterPopup';
+import { ScrollbarMinimap } from './ScrollbarMinimap';
 
 interface LogTableProps {
   entries: ParsedLogEntry[];
@@ -26,7 +27,9 @@ export const LogTable: React.FC<LogTableProps> = ({
   onRowSelect,
 }) => {
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  const tableHeaderRef = useRef<HTMLTableSectionElement>(null);
   const [focusedRowIndex, setFocusedRowIndex] = useState<number>(-1);
+  const [headerHeight, setHeaderHeight] = useState<number>(0);
   const [filterPopup, setFilterPopup] = useState<{
     column: ColumnDef;
     anchorElement: HTMLElement;
@@ -85,6 +88,14 @@ export const LogTable: React.FC<LogTableProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focusedRowIndex, rows, onRowSelect]);
 
+  // Measure header height
+  React.useEffect(() => {
+    if (tableHeaderRef.current) {
+      const height = tableHeaderRef.current.offsetHeight;
+      setHeaderHeight(height);
+    }
+  }, [columns]);
+
   // Auto-select first row on entries change
   React.useEffect(() => {
     if (rows.length > 0 && focusedRowIndex === -1) {
@@ -130,12 +141,25 @@ export const LogTable: React.FC<LogTableProps> = ({
     });
   };
 
+  const handleScrollToPosition = (position: number) => {
+    if (tableContainerRef.current) {
+      tableContainerRef.current.scrollTop = position;
+    }
+  };
+
   const hasNoEntries = entries.length === 0;
 
   return (
     <div ref={tableContainerRef} className="log-table-container">
+      <ScrollbarMinimap
+        entries={entries}
+        scrollElement={tableContainerRef.current}
+        totalHeight={totalSize}
+        headerHeight={headerHeight}
+        onScrollToPosition={handleScrollToPosition}
+      />
       <table className="log-table">
-        <thead>
+        <thead ref={tableHeaderRef}>
           {table.getHeaderGroups().map(headerGroup => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map(header => {

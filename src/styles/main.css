@@ -323,9 +323,16 @@ body {
 
 /* Log Table - Terminal-Style */
 .log-table-container {
+  position: relative;
   height: 100%;
   overflow: auto;
   background: var(--surface-0);
+  padding-right: 2px;
+}
+
+/* Offset scrollbar to start below sticky header */
+.log-table-container::-webkit-scrollbar-track {
+  margin-top: 35px;
 }
 
 .log-table {
@@ -333,7 +340,7 @@ body {
   font-size: 12px;
   font-family: var(--font-mono);
   letter-spacing: -0.01em;
-  min-width: 100%;
+  width: calc(100% - 14px);
   table-layout: auto;
 }
 
@@ -1122,6 +1129,37 @@ body {
   border-color: var(--border-focus);
   background: rgba(0, 0, 0, 0.4);
   box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
+}
+
+/* Scrollbar Minimap */
+.scrollbar-minimap {
+  position: sticky;
+  width: 12px;
+  z-index: 50;
+  pointer-events: all;
+  float: right;
+  clear: right;
+  margin-right: 0px;
+}
+
+.scrollbar-minimap canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-quiet);
+}
+
+.minimap-viewport {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: var(--info);
+  border-radius: 2px;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  border: 1px solid var(--info);
 }
 
 /* Responsive */
