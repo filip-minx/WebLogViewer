@@ -60,3 +60,30 @@ export interface ParsedFileResult {
   columns: ColumnDef[];
   totalEntries: number;
 }
+
+// Package management types
+export type PackageStatus = 'parsing' | 'ready' | 'error' | 'stale';
+
+export interface LogPackage {
+  id: string;
+  name: string; // ZIP filename
+  file: File | null; // null if stale/persisted
+  zipEntries: ZipEntryMetadata[];
+  selectedFilePaths: string[];
+  parsedEntries: ParsedLogEntry[];
+  columns: ColumnDef[];
+  filterState: FilterState;
+  parseState: FileParseState | null;
+  status: PackageStatus;
+  memorySize: number; // Estimated size in bytes
+  lastAccessed: number; // timestamp
+  error?: string;
+}
+
+export interface PackageMetadata {
+  id: string;
+  name: string;
+  lastAccessed: number;
+  selectedFilePaths: string[];
+  filterState: FilterState;
+}

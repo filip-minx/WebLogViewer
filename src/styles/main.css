@@ -254,6 +254,183 @@ body {
   background: var(--surface-1);
 }
 
+/* Package Dock */
+.package-dock {
+  border-bottom: 1px solid var(--border-standard);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.package-dock-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-xs) var(--space-md);
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid var(--border-quiet);
+}
+
+.dock-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+}
+
+.dock-count {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.package-dock-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-xs);
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.package-chip {
+  display: grid;
+  grid-template-columns: 14px 1fr auto auto 20px;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-standard);
+  border-left: 2px solid var(--border-quiet);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.package-chip:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--border-emphasis);
+}
+
+.package-chip.active {
+  background: var(--info-muted);
+  border-left-color: var(--info);
+  border-color: var(--border-emphasis);
+}
+
+.package-status-icon {
+  font-size: 10px;
+  line-height: 1;
+  transition: color 0.12s ease;
+}
+
+.package-chip.status-parsing .package-status-icon {
+  color: var(--warning);
+  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.package-chip.status-ready .package-status-icon {
+  color: var(--success);
+}
+
+.package-chip.status-error .package-status-icon {
+  color: var(--error);
+}
+
+.package-chip.status-stale .package-status-icon {
+  color: var(--text-muted);
+}
+
+.package-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.package-chip.active .package-name {
+  color: var(--info);
+  font-weight: 600;
+}
+
+.package-chip.status-stale .package-name {
+  color: var(--text-muted);
+}
+
+.package-state {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+  font-weight: 600;
+}
+
+.package-chip.status-parsing .package-state {
+  color: var(--warning);
+}
+
+.package-chip.status-ready .package-state {
+  color: var(--success);
+}
+
+.package-chip.status-error .package-state {
+  color: var(--error);
+}
+
+.package-memory {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 500;
+  min-width: 40px;
+  text-align: right;
+}
+
+.package-chip.active .package-memory {
+  color: var(--info);
+  opacity: 0.8;
+}
+
+.package-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: none;
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-muted);
+  padding: 0;
+  transition: all 0.12s ease;
+  opacity: 0.6;
+}
+
+.package-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  opacity: 1;
+}
+
+.package-chip.status-error .package-close:hover {
+  background: var(--error-muted);
+  color: var(--error);
+}
+
 /* File Tree */
 .file-tree {
   padding: var(--space-xs) 0;

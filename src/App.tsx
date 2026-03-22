@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { PackageDock } from './components/PackageDock/PackageDock';
 import { FileTree } from './components/FileTree/FileTree';
 import { LogTable } from './components/LogTable/LogTable';
 import { GlobalSearch } from './components/FilterPanel/GlobalSearch';
@@ -10,6 +11,7 @@ import { ZipService } from './services/zipService';
 import { ParseService } from './services/parseService';
 import { applyFilters } from './utils/filterUtils';
 import { useResizable } from './hooks/useResizable';
+import { usePackageManager } from './hooks/usePackageManager';
 import type {
   ZipEntryMetadata,
   ParsedLogEntry,
@@ -47,23 +49,21 @@ function mergeLogEntries(
 }
 
 function App() {
-  // ZIP file state
-  const [zipFile, setZipFile] = useState<File | null>(null);
-  const [zipEntries, setZipEntries] = useState<ZipEntryMetadata[]>([]);
+  // Package management
+  const {
+    packages,
+    activePackageId,
+    addPackage,
+    updatePackage,
+    removePackage,
+    switchPackage,
+    getActivePackage,
+    reloadStalePackage,
+  } = usePackageManager();
 
-  // Selected file state
-  const [selectedFilePaths, setSelectedFilePaths] = useState<string[]>([]);
+  const activePackage = getActivePackage();
 
-  // Parsing state
-  const [parseState, setParseState] = useState<FileParseState | null>(null);
-  const [parsedEntries, setParsedEntries] = useState<ParsedLogEntry[]>([]);
-  const [columns, setColumns] = useState<ColumnDef[]>([]);
-
-  // Filter state
-  const [filterState, setFilterState] = useState<FilterState>({
-    globalSearch: '',
-    columnFilters: {},
-  });
+  // Filter state for current view (not stored in package)
   const [filteredEntries, setFilteredEntries] = useState<ParsedLogEntry[]>([]);
 
   // UI state
@@ -92,15 +92,32 @@ function App() {
   // Handle ZIP file selection
   const handleFileSelect = async (file: File) => {
     try {
-      setZipFile(file);
-      setZipEntries([]);
-      setSelectedFilePaths([]);
-      setParsedEntries([]);
-      setColumns([]);
-      setParseState(null);
+      // Check if package with same name already exists
+      const existing = packages.find(p => p.name === file.name);
+      if (existing) {
+        if (existing.status === 'stale') {
+          // Reload stale package
+          reloadStalePackage(existing.id, file);
+          const entries = await zipService.enumerateEntries(file);
+          updatePackage(existing.id, {
+            zipEntries: entries.filter(e => !e.isDirectory),
+            status: 'ready',
+          });
+        } else {
+          // Switch to existing package
+          switchPackage(existing.id);
+        }
+        return;
+      }
+
+      // Add new package
+      const packageId = addPackage(file);
 
       const entries = await zipService.enumerateEntries(file);
-      setZipEntries(entries.filter(e => !e.isDirectory));
+      updatePackage(packageId, {
+        zipEntries: entries.filter(e => !e.isDirectory),
+        status: 'ready',
+      });
     } catch (error) {
       console.error('Failed to enumerate ZIP entries:', error);
       alert(`Failed to open ZIP file: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -109,18 +126,21 @@ function App() {
 
   // Handle file selection from tree
   const handleTreeFileSelect = async (paths: string[]) => {
-    if (!zipFile || paths.length === 0) return;
-
-    setSelectedFilePaths(paths);
-    setParsedEntries([]);
-    setColumns([]);
-    setFilterState({ globalSearch: '', columnFilters: {} });
+    if (!activePackage || !activePackage.file || paths.length === 0) return;
 
     const fileLabel = paths.length === 1 ? paths[0] : `${paths.length} files`;
-    setParseState({
-      fileName: fileLabel,
-      status: 'detecting',
-      progress: 0,
+
+    updatePackage(activePackage.id, {
+      selectedFilePaths: paths,
+      parsedEntries: [],
+      columns: [],
+      filterState: { globalSearch: '', columnFilters: {} },
+      parseState: {
+        fileName: fileLabel,
+        status: 'detecting',
+        progress: 0,
+      },
+      status: 'parsing',
     });
 
     try {
@@ -129,7 +149,7 @@ function App() {
 
       for (let i = 0; i < paths.length; i++) {
         const path = paths[i];
-        const content = await zipService.extractFile(zipFile, path);
+        const content = await zipService.extractFile(activePackage.file, path);
 
         let fileEntries: ParsedLogEntry[] = [];
         let fileColumns: ColumnDef[] = [];
@@ -160,12 +180,14 @@ function App() {
           columns: fileColumns,
         });
 
-        setParseState({
-          fileName: fileLabel,
-          status: 'parsing',
-          progress: ((i + 1) / paths.length) * 100,
-          parserId,
-          parserName,
+        updatePackage(activePackage.id, {
+          parseState: {
+            fileName: fileLabel,
+            status: 'parsing',
+            progress: ((i + 1) / paths.length) * 100,
+            parserId,
+            parserName,
+          },
         });
       }
 
@@ -184,49 +206,69 @@ function App() {
         },
       ];
 
-      setParsedEntries(mergedEntries);
-      setColumns(columnsWithSource);
-
-      setParseState({
-        fileName: fileLabel,
-        status: 'complete',
-        progress: 100,
-        parserId: allParsedFiles[0]?.columns ? 'merged' : 'unknown',
-        parserName: paths.length === 1 ? 'Single File' : 'Merged Files',
-        totalEntries: mergedEntries.length,
+      updatePackage(activePackage.id, {
+        parsedEntries: mergedEntries,
+        columns: columnsWithSource,
+        parseState: {
+          fileName: fileLabel,
+          status: 'complete',
+          progress: 100,
+          parserId: allParsedFiles[0]?.columns ? 'merged' : 'unknown',
+          parserName: paths.length === 1 ? 'Single File' : 'Merged Files',
+          totalEntries: mergedEntries.length,
+        },
+        status: 'ready',
       });
     } catch (error) {
       console.error('Failed to parse files:', error);
-      setParseState({
-        fileName: fileLabel,
+      updatePackage(activePackage.id, {
+        parseState: {
+          fileName: fileLabel,
+          status: 'error',
+          progress: 0,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
         status: 'error',
-        progress: 0,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   };
 
-  // Apply filters when entries or filter state changes
+  // Apply filters when active package or filter state changes
   useEffect(() => {
-    if (parsedEntries.length === 0) {
+    if (!activePackage || activePackage.parsedEntries.length === 0) {
       setFilteredEntries([]);
       return;
     }
 
-    const filtered = applyFilters(parsedEntries, filterState);
+    const filtered = applyFilters(activePackage.parsedEntries, activePackage.filterState);
     setFilteredEntries(filtered);
-  }, [parsedEntries, filterState]);
+  }, [activePackage]);
 
   // Handle global search change
   const handleGlobalSearchChange = (value: string) => {
-    setFilterState({
-      ...filterState,
-      globalSearch: value,
+    if (!activePackage) return;
+
+    updatePackage(activePackage.id, {
+      filterState: {
+        ...activePackage.filterState,
+        globalSearch: value,
+      },
+    });
+  };
+
+  // Handle filter state change
+  const handleFilterStateChange = (newFilterState: FilterState) => {
+    if (!activePackage) return;
+
+    updatePackage(activePackage.id, {
+      filterState: newFilterState,
     });
   };
 
   // Check if we're in raw display mode
-  const isRawDisplay = parsedEntries.length === 1 && parsedEntries[0].fields._displayMode === 'raw';
+  const isRawDisplay = activePackage?.parsedEntries.length === 1 &&
+                       activePackage.parsedEntries[0].fields._displayMode === 'raw';
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -237,7 +279,8 @@ function App() {
         document.getElementById('zip-file-input')?.click();
       }
       // Ctrl+F or Cmd+F to open search
-      if ((e.ctrlKey || e.metaKey) && e.key === 'f' && parsedEntries.length > 0 && !isRawDisplay) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f' &&
+          activePackage?.parsedEntries.length && !isRawDisplay) {
         e.preventDefault();
         setShowSearchModal(true);
       }
@@ -249,7 +292,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [parsedEntries.length, isRawDisplay, showSearchModal]);
+  }, [activePackage?.parsedEntries.length, isRawDisplay, showSearchModal]);
 
   return (
     <ErrorBoundary>
@@ -275,19 +318,37 @@ function App() {
                 className="file-input-hidden"
                 id="zip-file-input"
               />
-              {zipFile && (
+              {activePackage && (
                 <div className="toolbar-context">
                   <span className="context-label">ARCHIVE:</span>
-                  <span className="context-value">{zipFile.name}</span>
+                  <span className="context-value">{activePackage.name}</span>
                 </div>
               )}
             </div>
 
+            {/* Package Dock */}
+            <PackageDock
+              packages={packages}
+              activePackageId={activePackageId}
+              onPackageSelect={(id) => {
+                const pkg = packages.find(p => p.id === id);
+                if (pkg?.status === 'stale') {
+                  // Prompt to reload stale package
+                  if (confirm(`Package "${pkg.name}" needs to be reloaded. Select the ZIP file again?`)) {
+                    document.getElementById('zip-file-input')?.click();
+                  }
+                } else {
+                  switchPackage(id);
+                }
+              }}
+              onPackageClose={removePackage}
+            />
+
             {/* File Tree */}
             <div className="side-panel-content">
               <FileTree
-                entries={zipEntries}
-                selectedPaths={selectedFilePaths}
+                entries={activePackage?.zipEntries || []}
+                selectedPaths={activePackage?.selectedFilePaths || []}
                 onFileSelect={handleTreeFileSelect}
               />
             </div>
@@ -303,7 +364,7 @@ function App() {
           {/* Content area */}
           <section className="content-area">
             {/* Search Popup (Ctrl+F) */}
-            {showSearchModal && (
+            {showSearchModal && activePackage && (
               <div className="search-popup">
                 <div className="search-popup-header">
                   <span>Search</span>
@@ -316,7 +377,7 @@ function App() {
                 </div>
                 <div className="search-popup-content">
                   <GlobalSearch
-                    value={filterState.globalSearch}
+                    value={activePackage.filterState.globalSearch}
                     onChange={handleGlobalSearchChange}
                   />
                 </div>
@@ -324,27 +385,32 @@ function App() {
             )}
 
             <div className="table-area">
-              {parsedEntries.length === 0 && parseState?.status !== 'parsing' ? (
+              {!activePackage || (activePackage.parsedEntries.length === 0 &&
+               activePackage.parseState?.status !== 'parsing') ? (
                 <div className="empty-state">
-                  <p>Select a log file from the tree to view its contents</p>
+                  <p>
+                    {!activePackage
+                      ? 'Load a ZIP archive to begin'
+                      : 'Select a log file from the tree to view its contents'}
+                  </p>
                 </div>
               ) : isRawDisplay ? (
                 <div className="raw-content-viewer">
-                  <pre className="raw-content">{parsedEntries[0].raw}</pre>
+                  <pre className="raw-content">{activePackage.parsedEntries[0].raw}</pre>
                 </div>
               ) : (
                 <LogTable
                   entries={filteredEntries}
-                  columns={columns}
-                  filterState={filterState}
-                  onFilterChange={setFilterState}
+                  columns={activePackage.columns}
+                  filterState={activePackage.filterState}
+                  onFilterChange={handleFilterStateChange}
                   onRowSelect={setSelectedEntry}
                 />
               )}
             </div>
 
             {/* Message panel with resize handle */}
-            {!isRawDisplay && parsedEntries.length > 0 && (
+            {!isRawDisplay && activePackage && activePackage.parsedEntries.length > 0 && (
               <>
                 <ResizeHandle
                   direction="vertical"
@@ -361,8 +427,8 @@ function App() {
 
         <footer className="app-footer">
           <StatusBar
-            parseState={parseState}
-            totalEntries={parsedEntries.length}
+            parseState={activePackage?.parseState || null}
+            totalEntries={activePackage?.parsedEntries.length || 0}
             filteredEntries={filteredEntries.length}
           />
         </footer>

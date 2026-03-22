@@ -50,7 +50,7 @@ export const FileTree: React.FC<FileTreeProps> = ({ entries, selectedPaths, onFi
   if (entries.length === 0) {
     return (
       <div className="file-tree-empty">
-        <p>No ZIP file selected</p>
+        <p>No package loaded or package is stale</p>
       </div>
     );
   }
