@@ -9,6 +9,7 @@ import { ResizeHandle } from './components/ResizeHandle/ResizeHandle';
 import { StatusBar } from './components/StatusBar/StatusBar';
 import { ZipService } from './services/zipService';
 import { ParseService } from './services/parseService';
+import { FilePickerService } from './services/filePickerService';
 import { applyFilters } from './utils/filterUtils';
 import { useResizable } from './hooks/useResizable';
 import { usePackageManager } from './hooks/usePackageManager';
@@ -89,15 +90,17 @@ function App() {
     maxSize: 600,
   });
 
-  // Handle ZIP file selection
-  const handleFileSelect = async (file: File) => {
+  // Handle ZIP file selection (with optional handle from File System Access API)
+  const handleFileSelect = async (file: File, fileHandle?: FileSystemFileHandle) => {
+    console.log('[App] handleFileSelect called with file:', file.name, 'handle:', fileHandle?.name || 'none');
     try {
       // Check if package with same name already exists
       const existing = packages.find(p => p.name === file.name);
       if (existing) {
+        console.log('[App] Package already exists:', existing.id, 'status:', existing.status);
         if (existing.status === 'stale') {
           // Reload stale package
-          reloadStalePackage(existing.id, file);
+          await reloadStalePackage(existing.id, file, fileHandle);
           const entries = await zipService.enumerateEntries(file);
           updatePackage(existing.id, {
             zipEntries: entries.filter(e => !e.isDirectory),
@@ -111,7 +114,8 @@ function App() {
       }
 
       // Add new package
-      const packageId = addPackage(file);
+      console.log('[App] Adding new package with handle:', fileHandle?.name || 'none');
+      const packageId = addPackage(file, fileHandle);
 
       const entries = await zipService.enumerateEntries(file);
       updatePackage(packageId, {
@@ -119,8 +123,24 @@ function App() {
         status: 'ready',
       });
     } catch (error) {
-      console.error('Failed to enumerate ZIP entries:', error);
+      console.error('[App] Failed to enumerate ZIP entries:', error);
       alert(`Failed to open ZIP file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  // Open file picker using modern API or fallback
+  const handleOpenFilePicker = async () => {
+    try {
+      console.log('[App] handleOpenFilePicker called');
+      const result = await FilePickerService.pickFile();
+      console.log('[App] File picker result:', result?.file.name || 'cancelled', 'handle:', result?.handle?.name || 'none');
+      if (result) {
+        console.log('[App] Calling handleFileSelect...');
+        await handleFileSelect(result.file, result.handle);
+        console.log('[App] handleFileSelect completed');
+      }
+    } catch (error) {
+      console.error('[App] Error in handleOpenFilePicker:', error);
     }
   };
 
@@ -276,7 +296,11 @@ function App() {
       // Ctrl+O to open file
       if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
         e.preventDefault();
-        document.getElementById('zip-file-input')?.click();
+        if (FilePickerService.isSupported()) {
+          handleOpenFilePicker();
+        } else {
+          document.getElementById('zip-file-input')?.click();
+        }
       }
       // Ctrl+F or Cmd+F to open search
       if ((e.ctrlKey || e.metaKey) && e.key === 'f' &&
@@ -302,16 +326,28 @@ function App() {
           <aside className="side-panel" style={{ width: `${sidebarResize.size}px` }}>
             {/* Toolbar */}
             <div className="sidebar-toolbar">
-              <label className="toolbar-action" htmlFor="zip-file-input" title="Open ZIP archive (Ctrl+O)">
+              <button
+                className="toolbar-action"
+                onClick={() => {
+                  if (FilePickerService.isSupported()) {
+                    handleOpenFilePicker();
+                  } else {
+                    document.getElementById('zip-file-input')?.click();
+                  }
+                }}
+                title="Open ZIP archive (Ctrl+O)"
+              >
                 <span className="action-label">LOAD</span>
                 <span className="action-shortcut">Ctrl+O</span>
-              </label>
+              </button>
+              {/* Fallback file input for browsers without File System Access API */}
               <input
                 type="file"
                 accept=".zip"
                 onChange={e => {
                   const file = e.target.files?.[0];
                   if (file) {
+                    console.log('[App] Fallback file input used (no handle available)');
                     handleFileSelect(file);
                   }
                 }}
@@ -330,12 +366,46 @@ function App() {
             <PackageDock
               packages={packages}
               activePackageId={activePackageId}
-              onPackageSelect={(id) => {
+              onPackageSelect={async (id) => {
                 const pkg = packages.find(p => p.id === id);
+                console.log('[App] Package selected:', pkg?.name, 'status:', pkg?.status);
                 if (pkg?.status === 'stale') {
-                  // Prompt to reload stale package
-                  if (confirm(`Package "${pkg.name}" needs to be reloaded. Select the ZIP file again?`)) {
-                    document.getElementById('zip-file-input')?.click();
+                  // Try auto-reload from stored handle first
+                  console.log('[App] Attempting auto-reload for stale package:', pkg.name);
+                  const reloadedFile = await reloadStalePackage(id);
+
+                  if (reloadedFile) {
+                    // Successfully reloaded, now enumerate ZIP entries
+                    try {
+                      const entries = await zipService.enumerateEntries(reloadedFile);
+                      updatePackage(id, {
+                        zipEntries: entries.filter(e => !e.isDirectory),
+                        status: 'ready',
+                      });
+                    } catch (error) {
+                      console.error('Failed to enumerate ZIP entries:', error);
+                    }
+                  } else {
+                    // Auto-reload failed, prompt for file
+                    if (confirm(`Package "${pkg.name}" needs to be reloaded. Select the ZIP file?`)) {
+                      if (FilePickerService.isSupported()) {
+                        console.log('[App] Opening file picker for stale package:', pkg.name);
+                        const result = await FilePickerService.pickFile();
+                        console.log('[App] Picker result:', result?.file.name || 'cancelled');
+                        if (result) {
+                          if (result.file.name === pkg.name) {
+                            console.log('[App] File name matches, calling handleFileSelect');
+                            await handleFileSelect(result.file, result.handle);
+                          } else {
+                            console.log('[App] File name mismatch! Expected:', pkg.name, 'Got:', result.file.name);
+                            // Still reload with the new file - user explicitly selected it
+                            await handleFileSelect(result.file, result.handle);
+                          }
+                        }
+                      } else {
+                        document.getElementById('zip-file-input')?.click();
+                      }
+                    }
                   }
                 } else {
                   switchPackage(id);

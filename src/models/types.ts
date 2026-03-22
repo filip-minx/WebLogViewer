@@ -68,6 +68,7 @@ export interface LogPackage {
   id: string;
   name: string; // ZIP filename
   file: File | null; // null if stale/persisted
+  fileHandle?: FileSystemFileHandle; // File System Access API handle for auto-reload
   zipEntries: ZipEntryMetadata[];
   selectedFilePaths: string[];
   parsedEntries: ParsedLogEntry[];

@@ -7,7 +7,7 @@ interface PackageDockProps {
   packages: LogPackage[];
   activePackageId: string | null;
   onPackageSelect: (packageId: string) => void;
-  onPackageClose: (packageId: string) => void;
+  onPackageClose: (packageId: string) => void | Promise<void>;
 }
 
 function formatBytes(bytes: number): string {
