@@ -62,8 +62,7 @@ export class FilePickerService {
    */
   static async pickDirectory(): Promise<WorkspaceSource | null> {
     if (!this.isDirectoryPickerSupported()) {
-      alert('Directory picking is not supported in this browser. Please use Chrome or Edge.');
-      return null;
+      throw new Error('Directory picking is not supported in this browser. Please use Chrome or Edge.');
     }
     try {
       const dirHandle = await (window as any).showDirectoryPicker({ mode: 'read' }) as FileSystemDirectoryHandle;
@@ -90,8 +89,9 @@ export class FilePickerService {
         return file.name.toLowerCase().endsWith('.zip')
           ? { type: 'zip', file, fileHandle: handle as FileSystemFileHandle }
           : { type: 'file', file, fileHandle: handle as FileSystemFileHandle };
-      } catch {
-        // Fall through to legacy
+      } catch (err) {
+        if (err instanceof Error && err.name === 'NotAllowedError') throw err;
+        // Other errors: fall through to legacy path (API unavailable)
       }
     }
     const file = item.getAsFile();
@@ -141,12 +141,19 @@ export class FilePickerService {
     filePath: string
   ): Promise<string> {
     const parts = filePath.split('/');
+    if (parts.some(p => p === '..' || p === '')) {
+      throw new Error(`Invalid file path: "${filePath}"`);
+    }
     let currentDir: FileSystemDirectoryHandle = dirHandle;
     for (let i = 0; i < parts.length - 1; i++) {
       currentDir = await currentDir.getDirectoryHandle(parts[i]);
     }
     const fileHandle = await currentDir.getFileHandle(parts[parts.length - 1]);
     const file = await fileHandle.getFile();
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+    if (file.size > MAX_FILE_SIZE) {
+      throw new Error(`File "${parts[parts.length - 1]}" is too large (${(file.size / 1024 / 1024).toFixed(1)} MB)`);
+    }
     return file.text();
   }
 
