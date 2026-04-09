@@ -61,29 +61,34 @@ export interface ParsedFileResult {
   totalEntries: number;
 }
 
-// Package management types
-export type PackageStatus = 'parsing' | 'ready' | 'error' | 'stale';
+// Workspace management types
+export type WorkspaceStatus = 'parsing' | 'ready' | 'error' | 'stale';
 
-export interface LogPackage {
+export type WorkspaceSource =
+  | { type: 'zip';       file: File | null; fileHandle?: FileSystemFileHandle }
+  | { type: 'directory'; dirHandle: FileSystemDirectoryHandle | null }
+  | { type: 'file';      file: File | null; fileHandle?: FileSystemFileHandle };
+
+export interface Workspace {
   id: string;
-  name: string; // ZIP filename
-  file: File | null; // null if stale/persisted
-  fileHandle?: FileSystemFileHandle; // File System Access API handle for auto-reload
-  zipEntries: ZipEntryMetadata[];
+  name: string;                        // user-editable; defaults to filename/dirname
+  source: WorkspaceSource;
+  fileEntries: ZipEntryMetadata[];     // files for tree (ZIP + directory); empty for single-file
   selectedFilePaths: string[];
   parsedEntries: ParsedLogEntry[];
   columns: ColumnDef[];
   filterState: FilterState;
   parseState: FileParseState | null;
-  status: PackageStatus;
-  memorySize: number; // Estimated size in bytes
-  lastAccessed: number; // timestamp
+  status: WorkspaceStatus;
+  memorySize: number;
+  lastAccessed: number;
   error?: string;
 }
 
-export interface PackageMetadata {
+export interface WorkspaceMetadata {
   id: string;
   name: string;
+  sourceType: 'zip' | 'directory' | 'file';
   lastAccessed: number;
   selectedFilePaths: string[];
   filterState: FilterState;
