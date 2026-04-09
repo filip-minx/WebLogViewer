@@ -46,6 +46,16 @@ export function useWorkspaceManager() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
   const staleTimers = useRef<Map<string, number>>(new Map());
+  const activeWorkspaceIdRef = useRef<string | null>(null);
+  const workspacesRef = useRef<Workspace[]>([]);
+
+  useEffect(() => {
+    activeWorkspaceIdRef.current = activeWorkspaceId;
+  }, [activeWorkspaceId]);
+
+  useEffect(() => {
+    workspacesRef.current = workspaces;
+  }, [workspaces]);
 
   // Load persisted workspaces on mount
   useEffect(() => {
@@ -129,7 +139,7 @@ export function useWorkspaceManager() {
       const remaining = Math.max(0, STALE_TIMEOUT - (Date.now() - ws.lastAccessed));
       const timer = setTimeout(() => {
         setWorkspaces(prev => prev.map(w => {
-          if (w.id !== ws.id || w.id === activeWorkspaceId) return w;
+          if (w.id !== ws.id || w.id === activeWorkspaceIdRef.current) return w;
           return {
             ...w,
             // For directory workspaces, keep the dirHandle; for others, clear the File
@@ -179,31 +189,23 @@ export function useWorkspaceManager() {
 
   const removeWorkspace = useCallback(async (id: string) => {
     await WorkspaceStorage.deleteHandle(id);
-    const isRemovingActive = activeWorkspaceId === id;
-    let newActiveId: string | null = activeWorkspaceId;
-
-    setWorkspaces(prev => {
-      const remaining = prev.filter(ws => ws.id !== id);
-      if (isRemovingActive) {
-        newActiveId = remaining.length > 0 ? remaining[0].id : null;
-      }
-      const metadata: WorkspaceMetadata[] = remaining.map(ws => ({
-        id: ws.id,
-        name: ws.name,
-        sourceType: ws.source.type,
-        lastAccessed: ws.lastAccessed,
-        selectedFilePaths: ws.selectedFilePaths,
-        filterState: ws.filterState,
-      }));
-      WorkspaceStorage.saveWorkspaces(metadata);
-      return remaining;
-    });
-
-    if (isRemovingActive) {
-      setActiveWorkspaceId(newActiveId);
-      WorkspaceStorage.saveActiveWorkspace(newActiveId);
-    }
-  }, [activeWorkspaceId]);
+    const remaining = workspacesRef.current.filter(ws => ws.id !== id);
+    const nextActiveId = activeWorkspaceIdRef.current === id
+      ? (remaining[0]?.id ?? null)
+      : activeWorkspaceIdRef.current;
+    const metadata: WorkspaceMetadata[] = remaining.map(ws => ({
+      id: ws.id,
+      name: ws.name,
+      sourceType: ws.source.type,
+      lastAccessed: ws.lastAccessed,
+      selectedFilePaths: ws.selectedFilePaths,
+      filterState: ws.filterState,
+    }));
+    WorkspaceStorage.saveWorkspaces(metadata);
+    WorkspaceStorage.saveActiveWorkspace(nextActiveId);
+    setWorkspaces(remaining);
+    setActiveWorkspaceId(nextActiveId);
+  }, []);
 
   const switchWorkspace = useCallback((id: string) => {
     setActiveWorkspaceId(id);
@@ -226,7 +228,7 @@ export function useWorkspaceManager() {
   const reloadStaleWorkspace = useCallback(
     async (id: string): Promise<boolean> => {
       const ws = workspaces.find(w => w.id === id);
-      if (!ws) return false;
+      if (!ws || ws.status !== 'stale') return false;
 
       if (ws.source.type === 'directory') {
         const dirHandle = ws.source.dirHandle;
