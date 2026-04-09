@@ -1,0 +1,126 @@
+<h2>Left sidebar layout</h2>
+<p class="subtitle">Workspace list (A) sits above the file tree. Here's how it looks for each workspace type — click each tab to preview.</p>
+
+<div style="margin-bottom: 16px; display: flex; gap: 8px;">
+  <button onclick="show('folder')" id="tab-folder" style="padding:6px 14px; background:#1f6feb; border:none; border-radius:4px; color:#fff; cursor:pointer; font-size:12px;">📁 Folder</button>
+  <button onclick="show('zip')" id="tab-zip" style="padding:6px 14px; background:#21262d; border:1px solid #30363d; border-radius:4px; color:#8b949e; cursor:pointer; font-size:12px;">🗜 ZIP</button>
+  <button onclick="show('file')" id="tab-file" style="padding:6px 14px; background:#21262d; border:1px solid #30363d; border-radius:4px; color:#8b949e; cursor:pointer; font-size:12px;">📄 Single file</button>
+</div>
+
+<div class="split">
+  <!-- Sidebar mockup -->
+  <div class="mockup" style="max-width: 220px;">
+    <div class="mockup-header">Sidebar</div>
+    <div class="mockup-body" style="padding:0; font-family:monospace; font-size:11px; background:#0d1117; min-height: 320px;">
+
+      <!-- Workspace list header -->
+      <div style="padding:7px 10px; border-bottom:1px solid #21262d; display:flex; justify-content:space-between; align-items:center;">
+        <span style="color:#484f58; font-size:10px; text-transform:uppercase; letter-spacing:1px;">Workspaces</span>
+        <span style="color:#58a6ff; font-size:14px; cursor:pointer; line-height:1;" title="Open workspace">+</span>
+      </div>
+
+      <!-- Workspace entries -->
+      <div id="ws-folder" style="display:block;">
+        <div style="padding:5px 10px; background:#161b22; border-left:2px solid #58a6ff; color:#c9d1d9; display:flex; justify-content:space-between; align-items:center;">
+          <span>📁 jamf-logs-apr9</span>
+          <span style="color:#484f58; cursor:pointer;">✕</span>
+        </div>
+        <div style="padding:5px 10px; color:#6e7681; display:flex; justify-content:space-between; align-items:center;">
+          <span>🗜 crash-report.zip</span>
+          <span style="color:#484f58; cursor:pointer;">✕</span>
+        </div>
+      </div>
+      <div id="ws-zip" style="display:none;">
+        <div style="padding:5px 10px; color:#6e7681; display:flex; justify-content:space-between; align-items:center;">
+          <span>📁 jamf-logs-apr9</span>
+          <span style="color:#484f58; cursor:pointer;">✕</span>
+        </div>
+        <div style="padding:5px 10px; background:#161b22; border-left:2px solid #58a6ff; color:#c9d1d9; display:flex; justify-content:space-between; align-items:center;">
+          <span>🗜 crash-report.zip</span>
+          <span style="color:#484f58; cursor:pointer;">✕</span>
+        </div>
+      </div>
+      <div id="ws-file" style="display:none;">
+        <div style="padding:5px 10px; color:#6e7681; display:flex; justify-content:space-between; align-items:center;">
+          <span>📁 jamf-logs-apr9</span>
+          <span style="color:#484f58; cursor:pointer;">✕</span>
+        </div>
+        <div style="padding:5px 10px; background:#161b22; border-left:2px solid #58a6ff; color:#c9d1d9; display:flex; justify-content:space-between; align-items:center;">
+          <span>📄 service.log</span>
+          <span style="color:#484f58; cursor:pointer;">✕</span>
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div style="border-bottom:1px solid #21262d; margin: 4px 0;"></div>
+
+      <!-- File tree -->
+      <div id="tree-folder" style="display:block; padding: 4px 0;">
+        <div style="padding:3px 10px; color:#8b949e; font-size:10px; text-transform:uppercase; letter-spacing:1px; margin-bottom:2px;">jamf-logs-apr9</div>
+        <div style="padding:3px 10px 3px 18px; color:#6e7681;">▾ logs/</div>
+        <div style="padding:3px 10px 3px 28px; color:#c9d1d9; background:#161b22;">service.log</div>
+        <div style="padding:3px 10px 3px 28px; color:#6e7681;">network.log</div>
+        <div style="padding:3px 10px 3px 28px; color:#6e7681;">vpn.log</div>
+        <div style="padding:3px 10px 3px 18px; color:#6e7681;">▸ archive/</div>
+      </div>
+      <div id="tree-zip" style="display:none; padding: 4px 0;">
+        <div style="padding:3px 10px; color:#8b949e; font-size:10px; text-transform:uppercase; letter-spacing:1px; margin-bottom:2px;">crash-report.zip</div>
+        <div style="padding:3px 10px 3px 18px; color:#6e7681;">▾ logs/</div>
+        <div style="padding:3px 10px 3px 28px; color:#c9d1d9; background:#161b22;">crash.log</div>
+        <div style="padding:3px 10px 3px 28px; color:#6e7681;">system.log</div>
+        <div style="padding:3px 10px 3px 18px; color:#6e7681;">▸ diag/</div>
+      </div>
+      <div id="tree-file" style="display:none; padding: 4px 0;">
+        <div style="padding: 10px; color:#484f58; font-size:10px; font-style:italic; text-align:center;">Single file — no tree</div>
+        <div style="padding:3px 10px; color:#58a6ff; background:#161b22; display:flex; align-items:center; gap:6px;">
+          <span>📄</span> service.log
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Notes -->
+  <div>
+    <div id="note-folder" style="display:block;">
+      <h3>Folder workspace</h3>
+      <ul style="color:#8b949e; font-size:13px; line-height:1.8; padding-left:18px;">
+        <li>File tree reflects the real directory structure</li>
+        <li>Subdirectories are expandable</li>
+        <li>Clicking a file parses and shows it</li>
+        <li>Ctrl+click for multi-file merge (same as today)</li>
+      </ul>
+    </div>
+    <div id="note-zip" style="display:none;">
+      <h3>ZIP workspace</h3>
+      <ul style="color:#8b949e; font-size:13px; line-height:1.8; padding-left:18px;">
+        <li>Same as today — ZIP is enumerated on open</li>
+        <li>File tree shows paths inside the archive</li>
+        <li>Clicking a file extracts and parses it</li>
+        <li>Ctrl+click for multi-file merge</li>
+      </ul>
+    </div>
+    <div id="note-file" style="display:none;">
+      <h3>Single file workspace</h3>
+      <ul style="color:#8b949e; font-size:13px; line-height:1.8; padding-left:18px;">
+        <li>No file tree — file is parsed immediately on open</li>
+        <li>Sidebar shows just the filename as a label</li>
+        <li>Table populates right away</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+function show(type) {
+  ['folder','zip','file'].forEach(t => {
+    document.getElementById('ws-' + t).style.display = t === type ? 'block' : 'none';
+    document.getElementById('tree-' + t).style.display = t === type ? 'block' : 'none';
+    document.getElementById('note-' + t).style.display = t === type ? 'block' : 'none';
+    var tab = document.getElementById('tab-' + t);
+    tab.style.background = t === type ? '#1f6feb' : '#21262d';
+    tab.style.color = t === type ? '#fff' : '#8b949e';
+    tab.style.border = t === type ? 'none' : '1px solid #30363d';
+  });
+}
+</script>

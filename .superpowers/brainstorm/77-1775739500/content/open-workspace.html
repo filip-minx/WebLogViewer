@@ -1,0 +1,62 @@
+<h2>How do you open a new workspace?</h2>
+<p class="subtitle">Choose how the "open workspace" action is triggered. All three source types (ZIP, folder, file) are available in each approach.</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="padding: 16px; background: #0d1117; border-radius: 6px; font-family: monospace; font-size: 12px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+          <div class="mock-button" style="padding: 4px 12px; font-size: 11px;">+ New Workspace ▾</div>
+        </div>
+        <div style="background: #161b22; border: 1px solid #30363d; border-radius: 4px; padding: 4px 0; width: 160px; font-size: 11px;">
+          <div style="padding: 6px 12px; color: #8b949e;">📁 Open folder</div>
+          <div style="padding: 6px 12px; color: #8b949e;">🗜 Open ZIP archive</div>
+          <div style="padding: 6px 12px; color: #8b949e;">📄 Open single file</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Single button with dropdown</h3>
+      <p>One "+ New Workspace" button reveals a small menu with the three source types.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="padding: 16px; background: #0d1117; border-radius: 6px; font-family: monospace; font-size: 12px;">
+        <div style="display: flex; gap: 6px;">
+          <div class="mock-button" style="padding: 4px 10px; font-size: 11px;" title="Open folder">📁</div>
+          <div class="mock-button" style="padding: 4px 10px; font-size: 11px;" title="Open ZIP">🗜</div>
+          <div class="mock-button" style="padding: 4px 10px; font-size: 11px;" title="Open file">📄</div>
+        </div>
+        <div style="margin-top: 10px; color: #484f58; font-size: 10px;">folder · zip · file</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Three icon buttons</h3>
+      <p>Separate icon buttons for each source type, always visible in the toolbar.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="padding: 16px; background: #0d1117; border-radius: 6px; font-family: monospace; font-size: 12px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div class="mock-button" style="padding: 4px 12px; font-size: 11px;">+ Open</div>
+        </div>
+        <div style="margin-top: 10px; background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 16px; font-size: 11px; color: #8b949e;">
+          <div style="margin-bottom: 8px; font-weight: bold; color: #c9d1d9;">Open a workspace</div>
+          <div style="display: flex; gap: 8px;">
+            <div style="flex: 1; border: 1px dashed #30363d; border-radius: 4px; padding: 10px; text-align: center;">📁<br/>Folder</div>
+            <div style="flex: 1; border: 1px dashed #30363d; border-radius: 4px; padding: 10px; text-align: center;">🗜<br/>ZIP</div>
+            <div style="flex: 1; border: 1px dashed #30363d; border-radius: 4px; padding: 10px; text-align: center;">📄<br/>File</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Button opens modal picker</h3>
+      <p>One "+ Open" button reveals a small modal where you choose the source type visually.</p>
+    </div>
+  </div>
+</div>
