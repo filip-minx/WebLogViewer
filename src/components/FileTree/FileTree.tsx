@@ -6,6 +6,8 @@ interface FileTreeProps {
   entries: ZipEntryMetadata[];
   selectedPaths: string[];
   onFileSelect: (paths: string[]) => void;
+  sourceType?: 'zip' | 'directory' | 'file';
+  singleFileName?: string;
 }
 
 interface TreeNode {
@@ -16,7 +18,7 @@ interface TreeNode {
   children: Map<string, TreeNode>;
 }
 
-export const FileTree: React.FC<FileTreeProps> = ({ entries, selectedPaths, onFileSelect }) => {
+export const FileTree: React.FC<FileTreeProps> = ({ entries, selectedPaths, onFileSelect, sourceType, singleFileName }) => {
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set(['/']));
 
   const tree = useMemo(() => buildTree(entries), [entries]);
@@ -47,10 +49,26 @@ export const FileTree: React.FC<FileTreeProps> = ({ entries, selectedPaths, onFi
     }
   };
 
+  // Single-file workspace: no tree, show static filename label
+  if (sourceType === 'file') {
+    return (
+      <div className="file-tree">
+        <div className="file-tree-single-file">
+          <span className="file-tree-single-icon">📄</span>
+          <span className="file-tree-single-name">{singleFileName || 'File'}</span>
+        </div>
+      </div>
+    );
+  }
+
   if (entries.length === 0) {
     return (
       <div className="file-tree-empty">
-        <p>No package loaded or package is stale</p>
+        <p>
+          {sourceType === 'directory'
+            ? 'No files found in directory'
+            : 'No workspace loaded or workspace is stale'}
+        </p>
       </div>
     );
   }
