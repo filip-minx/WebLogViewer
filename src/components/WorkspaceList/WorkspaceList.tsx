@@ -43,6 +43,7 @@ export function WorkspaceList({
   const [editingName, setEditingName] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const cancelledRef = useRef(false);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -124,10 +125,10 @@ export function WorkspaceList({
                 value={editingName}
                 onChange={e => setEditingName(e.target.value)}
                 onKeyDown={e => {
-                  if (e.key === 'Enter') commitRename(ws.id);
-                  if (e.key === 'Escape') setEditingId(null);
+                  if (e.key === 'Enter') { cancelledRef.current = false; commitRename(ws.id); }
+                  if (e.key === 'Escape') { cancelledRef.current = true; setEditingId(null); }
                 }}
-                onBlur={() => commitRename(ws.id)}
+                onBlur={() => { if (!cancelledRef.current) commitRename(ws.id); cancelledRef.current = false; }}
                 onClick={e => e.stopPropagation()}
               />
             ) : (
