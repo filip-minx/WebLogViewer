@@ -169,6 +169,9 @@ function App() {
     }
   };
 
+  const handleWorkspaceOpenRef = useRef(handleWorkspaceOpen);
+  useEffect(() => { handleWorkspaceOpenRef.current = handleWorkspaceOpen; });
+
   // Handle file selection from tree
   const handleTreeFileSelect = async (paths: string[]) => {
     if (!activeWorkspace || paths.length === 0) return;
@@ -323,7 +326,7 @@ function App() {
       if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
         e.preventDefault();
         const source = await FilePickerService.pickFile();
-        if (source) await handleWorkspaceOpen(source);
+        if (source) await handleWorkspaceOpenRef.current(source);
       }
       // Ctrl+F or Cmd+F to open search
       if ((e.ctrlKey || e.metaKey) && e.key === 'f' &&
