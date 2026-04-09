@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { PackageDock } from './components/PackageDock/PackageDock';
+import { WorkspaceList } from './components/WorkspaceList/WorkspaceList';
 import { FileTree } from './components/FileTree/FileTree';
 import { LogTable } from './components/LogTable/LogTable';
 import { GlobalSearch } from './components/FilterPanel/GlobalSearch';
@@ -12,12 +12,11 @@ import { ParseService } from './services/parseService';
 import { FilePickerService } from './services/filePickerService';
 import { applyFilters } from './utils/filterUtils';
 import { useResizable } from './hooks/useResizable';
-import { usePackageManager } from './hooks/usePackageManager';
+import { useWorkspaceManager } from './hooks/useWorkspaceManager';
 import type {
-  ZipEntryMetadata,
+  WorkspaceSource,
   ParsedLogEntry,
   ColumnDef,
-  FileParseState,
   FilterState,
 } from './models/types';
 import './styles/main.css';
@@ -50,26 +49,30 @@ function mergeLogEntries(
 }
 
 function App() {
-  // Package management
+  // Workspace management
   const {
-    packages,
-    activePackageId,
-    addPackage,
-    updatePackage,
-    removePackage,
-    switchPackage,
-    getActivePackage,
-    reloadStalePackage,
-  } = usePackageManager();
+    workspaces,
+    activeWorkspaceId,
+    addWorkspace,
+    updateWorkspace,
+    removeWorkspace,
+    switchWorkspace,
+    renameWorkspace,
+    getActiveWorkspace,
+    reloadStaleWorkspace,
+  } = useWorkspaceManager();
 
-  const activePackage = getActivePackage();
+  const activeWorkspace = getActiveWorkspace();
 
-  // Filter state for current view (not stored in package)
+  // Filter state for current view (not stored in workspace)
   const [filteredEntries, setFilteredEntries] = useState<ParsedLogEntry[]>([]);
 
   // UI state
   const [selectedEntry, setSelectedEntry] = useState<ParsedLogEntry | null>(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
+
+  const dragCounter = useRef(0);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Services
   const zipService = useRef(new ZipService()).current;
@@ -90,86 +93,113 @@ function App() {
     maxSize: 600,
   });
 
-  // Handle ZIP file selection (with optional handle from File System Access API)
-  const handleFileSelect = async (file: File, fileHandle?: FileSystemFileHandle) => {
-    console.log('[App] handleFileSelect called with file:', file.name, 'handle:', fileHandle?.name || 'none');
-    try {
-      // Check if package with same name already exists
-      const existing = packages.find(p => p.name === file.name);
-      if (existing) {
-        console.log('[App] Package already exists:', existing.id, 'status:', existing.status);
-        if (existing.status === 'stale') {
-          // Reload stale package
-          await reloadStalePackage(existing.id, file, fileHandle);
-          const entries = await zipService.enumerateEntries(file);
-          updatePackage(existing.id, {
-            zipEntries: entries.filter(e => !e.isDirectory),
-            status: 'ready',
-          });
-        } else {
-          // Switch to existing package
-          switchPackage(existing.id);
-        }
-        return;
-      }
-
-      // Add new package
-      console.log('[App] Adding new package with handle:', fileHandle?.name || 'none');
-      const packageId = addPackage(file, fileHandle);
-
-      const entries = await zipService.enumerateEntries(file);
-      updatePackage(packageId, {
-        zipEntries: entries.filter(e => !e.isDirectory),
+  // Enumerate files or auto-parse depending on source type.
+  // Called after a workspace is added or a stale workspace is reloaded.
+  const openWorkspaceContent = async (workspaceId: string, source: WorkspaceSource) => {
+    if (source.type === 'zip' && source.file) {
+      const entries = await zipService.enumerateEntries(source.file);
+      updateWorkspace(workspaceId, {
+        fileEntries: entries.filter(e => !e.isDirectory),
         status: 'ready',
       });
-    } catch (error) {
-      console.error('[App] Failed to enumerate ZIP entries:', error);
-      alert(`Failed to open ZIP file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } else if (source.type === 'directory' && source.dirHandle) {
+      const entries = await FilePickerService.listDirectoryEntries(source.dirHandle);
+      updateWorkspace(workspaceId, {
+        fileEntries: entries,
+        status: 'ready',
+      });
+    } else if (source.type === 'file' && source.file) {
+      // Single file: auto-parse immediately
+      const fileName = source.file.name;
+      updateWorkspace(workspaceId, {
+        selectedFilePaths: [fileName],
+        parseState: { fileName, status: 'detecting', progress: 0 },
+        status: 'parsing',
+      });
+      const content = await source.file.text();
+      let fileEntries: ParsedLogEntry[] = [];
+      let fileColumns: ColumnDef[] = [];
+      await parseService.parseFile(content, fileName, progress => {
+        if (progress.parserId && progress.parserName && progress.columns) {
+          fileColumns = progress.columns;
+        }
+        fileEntries = progress.entries;
+      });
+      updateWorkspace(workspaceId, {
+        parsedEntries: fileEntries,
+        columns: fileColumns,
+        parseState: {
+          fileName,
+          status: 'complete',
+          progress: 100,
+          totalEntries: fileEntries.length,
+        },
+        status: 'ready',
+      });
     }
   };
 
-  // Open file picker using modern API or fallback
-  const handleOpenFilePicker = async () => {
+  // Open or focus a workspace from a WorkspaceSource.
+  // If same-named workspace exists and is stale, reloads it.
+  // If same-named workspace exists and is active/ready, just switches to it.
+  const handleWorkspaceOpen = async (source: WorkspaceSource) => {
     try {
-      console.log('[App] handleOpenFilePicker called');
-      const result = await FilePickerService.pickFile();
-      console.log('[App] File picker result:', result?.file.name || 'cancelled', 'handle:', result?.handle?.name || 'none');
-      if (result) {
-        console.log('[App] Calling handleFileSelect...');
-        await handleFileSelect(result.file, result.handle);
-        console.log('[App] handleFileSelect completed');
+      const name = source.type === 'directory'
+        ? (source.dirHandle?.name ?? 'Unnamed')
+        : (source.file?.name ?? 'Unnamed');
+
+      const existing = workspaces.find(w => w.name === name);
+      if (existing?.status === 'stale') {
+        const reloaded = await reloadStaleWorkspace(existing.id);
+        if (reloaded) {
+          await openWorkspaceContent(existing.id, source);
+          return;
+        }
       }
+      if (existing && existing.status !== 'stale') {
+        switchWorkspace(existing.id);
+        return;
+      }
+
+      const workspaceId = addWorkspace(source, name);
+      await openWorkspaceContent(workspaceId, source);
     } catch (error) {
-      console.error('[App] Error in handleOpenFilePicker:', error);
+      console.error('[App] Failed to open workspace:', error);
+      alert(`Failed to open: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
   // Handle file selection from tree
   const handleTreeFileSelect = async (paths: string[]) => {
-    if (!activePackage || !activePackage.file || paths.length === 0) return;
+    if (!activeWorkspace || paths.length === 0) return;
+    const source = activeWorkspace.source;
+    if (source.type === 'directory' && !source.dirHandle) return;
+    if (source.type === 'zip' && !source.file) return;
 
     const fileLabel = paths.length === 1 ? paths[0] : `${paths.length} files`;
 
-    updatePackage(activePackage.id, {
+    updateWorkspace(activeWorkspace.id, {
       selectedFilePaths: paths,
       parsedEntries: [],
       columns: [],
       filterState: { globalSearch: '', columnFilters: {} },
-      parseState: {
-        fileName: fileLabel,
-        status: 'detecting',
-        progress: 0,
-      },
+      parseState: { fileName: fileLabel, status: 'detecting', progress: 0 },
       status: 'parsing',
     });
 
     try {
-      // Parse all selected files
       const allParsedFiles: Array<{ path: string; entries: ParsedLogEntry[]; columns: ColumnDef[] }> = [];
 
       for (let i = 0; i < paths.length; i++) {
         const path = paths[i];
-        const content = await zipService.extractFile(activePackage.file, path);
+        let content: string;
+        if (source.type === 'directory' && source.dirHandle) {
+          content = await FilePickerService.readFileFromDirectory(source.dirHandle, path);
+        } else if (source.type === 'zip' && source.file) {
+          content = await zipService.extractFile(source.file, path);
+        } else {
+          continue;
+        }
 
         let fileEntries: ParsedLogEntry[] = [];
         let fileColumns: ColumnDef[] = [];
@@ -185,22 +215,14 @@ function App() {
           fileEntries = progress.entries;
         });
 
-        // Add source file to each entry
         const entriesWithSource = fileEntries.map(entry => ({
           ...entry,
-          fields: {
-            ...entry.fields,
-            _sourceFile: path,
-          },
+          fields: { ...entry.fields, _sourceFile: path },
         }));
 
-        allParsedFiles.push({
-          path,
-          entries: entriesWithSource,
-          columns: fileColumns,
-        });
+        allParsedFiles.push({ path, entries: entriesWithSource, columns: fileColumns });
 
-        updatePackage(activePackage.id, {
+        updateWorkspace(activeWorkspace.id, {
           parseState: {
             fileName: fileLabel,
             status: 'parsing',
@@ -211,22 +233,13 @@ function App() {
         });
       }
 
-      // Merge entries from all files
       const mergedEntries = mergeLogEntries(allParsedFiles);
-
-      // Use columns from first file and add source column
       const baseColumns = allParsedFiles[0]?.columns || [];
-      const columnsWithSource: ColumnDef[] = [
-        ...baseColumns,
-        {
-          id: 'fields._sourceFile',
-          header: 'Source File',
-          type: 'text',
-          filterMode: 'contains',
-        },
-      ];
+      const columnsWithSource: ColumnDef[] = paths.length > 1
+        ? [...baseColumns, { id: 'fields._sourceFile', header: 'Source File', type: 'text' as const, filterMode: 'contains' as const }]
+        : baseColumns;
 
-      updatePackage(activePackage.id, {
+      updateWorkspace(activeWorkspace.id, {
         parsedEntries: mergedEntries,
         columns: columnsWithSource,
         parseState: {
@@ -240,71 +253,81 @@ function App() {
         status: 'ready',
       });
     } catch (error) {
-      console.error('Failed to parse files:', error);
-      updatePackage(activePackage.id, {
-        parseState: {
-          fileName: fileLabel,
-          status: 'error',
-          progress: 0,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        },
+      console.error('[App] Failed to parse files:', error);
+      updateWorkspace(activeWorkspace.id, {
+        parseState: { fileName: fileLabel, status: 'error', progress: 0, error: String(error) },
         status: 'error',
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: String(error),
       });
     }
   };
 
-  // Apply filters when active package or filter state changes
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounter.current++;
+    setIsDragging(true);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDragLeave = () => {
+    dragCounter.current--;
+    if (dragCounter.current === 0) setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounter.current = 0;
+    setIsDragging(false);
+    const items = Array.from(e.dataTransfer.items).filter(item => item.kind === 'file');
+    for (const item of items) {
+      const source = await FilePickerService.detectDropSource(item);
+      if (source) await handleWorkspaceOpen(source);
+    }
+  };
+
+  // Apply filters when active workspace or filter state changes
   useEffect(() => {
-    if (!activePackage || activePackage.parsedEntries.length === 0) {
+    if (!activeWorkspace || activeWorkspace.parsedEntries.length === 0) {
       setFilteredEntries([]);
       return;
     }
-
-    const filtered = applyFilters(activePackage.parsedEntries, activePackage.filterState);
+    const filtered = applyFilters(activeWorkspace.parsedEntries, activeWorkspace.filterState);
     setFilteredEntries(filtered);
-  }, [activePackage]);
+  }, [activeWorkspace]);
 
   // Handle global search change
   const handleGlobalSearchChange = (value: string) => {
-    if (!activePackage) return;
-
-    updatePackage(activePackage.id, {
-      filterState: {
-        ...activePackage.filterState,
-        globalSearch: value,
-      },
+    if (!activeWorkspace) return;
+    updateWorkspace(activeWorkspace.id, {
+      filterState: { ...activeWorkspace.filterState, globalSearch: value },
     });
   };
 
   // Handle filter state change
   const handleFilterStateChange = (newFilterState: FilterState) => {
-    if (!activePackage) return;
-
-    updatePackage(activePackage.id, {
-      filterState: newFilterState,
-    });
+    if (!activeWorkspace) return;
+    updateWorkspace(activeWorkspace.id, { filterState: newFilterState });
   };
 
   // Check if we're in raw display mode
-  const isRawDisplay = activePackage?.parsedEntries.length === 1 &&
-                       activePackage.parsedEntries[0].fields._displayMode === 'raw';
+  const isRawDisplay = activeWorkspace?.parsedEntries.length === 1 &&
+                       activeWorkspace.parsedEntries[0].fields._displayMode === 'raw';
 
   // Handle keyboard shortcuts
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = async (e: KeyboardEvent) => {
       // Ctrl+O to open file
       if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
         e.preventDefault();
-        if (FilePickerService.isSupported()) {
-          handleOpenFilePicker();
-        } else {
-          document.getElementById('zip-file-input')?.click();
-        }
+        const source = await FilePickerService.pickFile();
+        if (source) await handleWorkspaceOpen(source);
       }
       // Ctrl+F or Cmd+F to open search
       if ((e.ctrlKey || e.metaKey) && e.key === 'f' &&
-          activePackage?.parsedEntries.length && !isRawDisplay) {
+          activeWorkspace?.parsedEntries.length && !isRawDisplay) {
         e.preventDefault();
         setShowSearchModal(true);
       }
@@ -316,110 +339,67 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activePackage?.parsedEntries.length, isRawDisplay, showSearchModal]);
+  }, [activeWorkspace?.parsedEntries.length, isRawDisplay, showSearchModal]);
 
   return (
     <ErrorBoundary>
-      <div className="app">
+      <div
+        className="app"
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {isDragging && (
+          <div className="drop-overlay">
+            <span className="drop-overlay-label">Drop to open</span>
+          </div>
+        )}
         <main className="app-main">
           {/* Side Panel */}
           <aside className="side-panel" style={{ width: `${sidebarResize.size}px` }}>
-            {/* Toolbar */}
-            <div className="sidebar-toolbar">
-              <button
-                className="toolbar-action"
-                onClick={() => {
-                  if (FilePickerService.isSupported()) {
-                    handleOpenFilePicker();
+            <WorkspaceList
+              workspaces={workspaces}
+              activeWorkspaceId={activeWorkspaceId}
+              onWorkspaceSelect={async (id) => {
+                const ws = workspaces.find(w => w.id === id);
+                if (!ws) return;
+                if (ws.status === 'stale') {
+                  const reloaded = await reloadStaleWorkspace(id);
+                  if (reloaded) {
+                    await openWorkspaceContent(id, ws.source);
                   } else {
-                    document.getElementById('zip-file-input')?.click();
-                  }
-                }}
-                title="Open ZIP archive (Ctrl+O)"
-              >
-                <span className="action-label">LOAD</span>
-                <span className="action-shortcut">Ctrl+O</span>
-              </button>
-              {/* Fallback file input for browsers without File System Access API */}
-              <input
-                type="file"
-                accept=".zip"
-                onChange={e => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    console.log('[App] Fallback file input used (no handle available)');
-                    handleFileSelect(file);
-                  }
-                }}
-                className="file-input-hidden"
-                id="zip-file-input"
-              />
-              {activePackage && (
-                <div className="toolbar-context">
-                  <span className="context-label">ARCHIVE:</span>
-                  <span className="context-value">{activePackage.name}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Package Dock */}
-            <PackageDock
-              packages={packages}
-              activePackageId={activePackageId}
-              onPackageSelect={async (id) => {
-                const pkg = packages.find(p => p.id === id);
-                console.log('[App] Package selected:', pkg?.name, 'status:', pkg?.status);
-                if (pkg?.status === 'stale') {
-                  // Try auto-reload from stored handle first
-                  console.log('[App] Attempting auto-reload for stale package:', pkg.name);
-                  const reloadedFile = await reloadStalePackage(id);
-
-                  if (reloadedFile) {
-                    // Successfully reloaded, now enumerate ZIP entries
-                    try {
-                      const entries = await zipService.enumerateEntries(reloadedFile);
-                      updatePackage(id, {
-                        zipEntries: entries.filter(e => !e.isDirectory),
-                        status: 'ready',
-                      });
-                    } catch (error) {
-                      console.error('Failed to enumerate ZIP entries:', error);
-                    }
-                  } else {
-                    // Auto-reload failed, prompt for file
-                    if (confirm(`Package "${pkg.name}" needs to be reloaded. Select the ZIP file?`)) {
-                      if (FilePickerService.isSupported()) {
-                        console.log('[App] Opening file picker for stale package:', pkg.name);
-                        const result = await FilePickerService.pickFile();
-                        console.log('[App] Picker result:', result?.file.name || 'cancelled');
-                        if (result) {
-                          if (result.file.name === pkg.name) {
-                            console.log('[App] File name matches, calling handleFileSelect');
-                            await handleFileSelect(result.file, result.handle);
-                          } else {
-                            console.log('[App] File name mismatch! Expected:', pkg.name, 'Got:', result.file.name);
-                            // Still reload with the new file - user explicitly selected it
-                            await handleFileSelect(result.file, result.handle);
-                          }
-                        }
-                      } else {
-                        document.getElementById('zip-file-input')?.click();
-                      }
-                    }
+                    const source = ws.source.type === 'directory'
+                      ? await FilePickerService.pickDirectory()
+                      : await FilePickerService.pickFile();
+                    if (source) await handleWorkspaceOpen(source);
                   }
                 } else {
-                  switchPackage(id);
+                  switchWorkspace(id);
                 }
               }}
-              onPackageClose={removePackage}
+              onWorkspaceClose={removeWorkspace}
+              onWorkspaceRename={renameWorkspace}
+              onPickFile={async () => {
+                const source = await FilePickerService.pickFile();
+                if (source) await handleWorkspaceOpen(source);
+              }}
+              onPickDirectory={async () => {
+                const source = await FilePickerService.pickDirectory();
+                if (source) await handleWorkspaceOpen(source);
+              }}
             />
-
-            {/* File Tree */}
             <div className="side-panel-content">
               <FileTree
-                entries={activePackage?.zipEntries || []}
-                selectedPaths={activePackage?.selectedFilePaths || []}
+                entries={activeWorkspace?.fileEntries || []}
+                selectedPaths={activeWorkspace?.selectedFilePaths || []}
                 onFileSelect={handleTreeFileSelect}
+                sourceType={activeWorkspace?.source.type}
+                singleFileName={
+                  activeWorkspace?.source.type === 'file' && activeWorkspace.source.file
+                    ? activeWorkspace.source.file.name
+                    : undefined
+                }
               />
             </div>
           </aside>
@@ -434,7 +414,7 @@ function App() {
           {/* Content area */}
           <section className="content-area">
             {/* Search Popup (Ctrl+F) */}
-            {showSearchModal && activePackage && (
+            {showSearchModal && activeWorkspace && (
               <div className="search-popup">
                 <div className="search-popup-header">
                   <span>Search</span>
@@ -447,7 +427,7 @@ function App() {
                 </div>
                 <div className="search-popup-content">
                   <GlobalSearch
-                    value={activePackage.filterState.globalSearch}
+                    value={activeWorkspace.filterState.globalSearch}
                     onChange={handleGlobalSearchChange}
                   />
                 </div>
@@ -455,24 +435,24 @@ function App() {
             )}
 
             <div className="table-area">
-              {!activePackage || (activePackage.parsedEntries.length === 0 &&
-               activePackage.parseState?.status !== 'parsing') ? (
+              {!activeWorkspace || (activeWorkspace.parsedEntries.length === 0 &&
+               activeWorkspace.parseState?.status !== 'parsing') ? (
                 <div className="empty-state">
                   <p>
-                    {!activePackage
-                      ? 'Load a ZIP archive to begin'
+                    {!activeWorkspace
+                      ? 'Open a workspace to begin'
                       : 'Select a log file from the tree to view its contents'}
                   </p>
                 </div>
               ) : isRawDisplay ? (
                 <div className="raw-content-viewer">
-                  <pre className="raw-content">{activePackage.parsedEntries[0].raw}</pre>
+                  <pre className="raw-content">{activeWorkspace.parsedEntries[0].raw}</pre>
                 </div>
               ) : (
                 <LogTable
                   entries={filteredEntries}
-                  columns={activePackage.columns}
-                  filterState={activePackage.filterState}
+                  columns={activeWorkspace.columns}
+                  filterState={activeWorkspace.filterState}
                   onFilterChange={handleFilterStateChange}
                   onRowSelect={setSelectedEntry}
                 />
@@ -480,7 +460,7 @@ function App() {
             </div>
 
             {/* Message panel with resize handle */}
-            {!isRawDisplay && activePackage && activePackage.parsedEntries.length > 0 && (
+            {!isRawDisplay && activeWorkspace && activeWorkspace.parsedEntries.length > 0 && (
               <>
                 <ResizeHandle
                   direction="vertical"
@@ -497,8 +477,8 @@ function App() {
 
         <footer className="app-footer">
           <StatusBar
-            parseState={activePackage?.parseState || null}
-            totalEntries={activePackage?.parsedEntries.length || 0}
+            parseState={activeWorkspace?.parseState || null}
+            totalEntries={activeWorkspace?.parsedEntries.length || 0}
             filteredEntries={filteredEntries.length}
           />
         </footer>
