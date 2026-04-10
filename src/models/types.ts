@@ -65,9 +65,9 @@ export interface ParsedFileResult {
 export type WorkspaceStatus = 'parsing' | 'ready' | 'error' | 'stale';
 
 export type WorkspaceSource =
-  | { type: 'zip';       file: File | null; fileHandle?: FileSystemFileHandle }
-  | { type: 'directory'; dirHandle: FileSystemDirectoryHandle | null }
-  | { type: 'file';      file: File | null; fileHandle?: FileSystemFileHandle };
+  | { type: 'zip';       file: File | null; fileHandle?: FileSystemFileHandle;  nativePath?: string }
+  | { type: 'directory'; dirHandle: FileSystemDirectoryHandle | null;            nativePath?: string }
+  | { type: 'file';      file: File | null; fileHandle?: FileSystemFileHandle;  nativePath?: string };
 
 export interface Workspace {
   id: string;
@@ -92,4 +92,5 @@ export interface WorkspaceMetadata {
   lastAccessed: number;
   selectedFilePaths: string[];
   filterState: FilterState;
+  nativePath?: string;   // persists the native path for Electron stale-reload
 }
