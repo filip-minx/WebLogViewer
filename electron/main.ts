@@ -32,10 +32,12 @@ async function walkDirectory(
   for (const entry of entries) {
     const fullPath = join(dir, entry.name)
     const relPath = relative(base, fullPath).replace(/\\/g, '/')
-    if (entry.isDirectory() && !entry.isSymbolicLink()) {
+    if (entry.isDirectory()) {
       results.push({ path: relPath, size: 0, isDirectory: true })
-      const children = await walkDirectory(fullPath, base)
-      results.push(...children)
+      if (!entry.isSymbolicLink()) {
+        const children = await walkDirectory(fullPath, base)
+        results.push(...children)
+      }
     } else {
       const info = await stat(fullPath)
       results.push({ path: relPath, size: info.size, isDirectory: false })
@@ -106,12 +108,10 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('app:relaunchAsAdmin', () => {
     const safeExecPath = process.execPath.replace(/'/g, "''")
+    const safeArgv1 = process.argv[1].replace(/'/g, "''").replace(/"/g, '\\"')
     const script = app.isPackaged
       ? `Start-Process -FilePath '${safeExecPath}' -Verb RunAs`
-      : (() => {
-          const safeArgv1 = process.argv[1].replace(/'/g, "''")
-          return `Start-Process -FilePath '${safeExecPath}' -ArgumentList '"${safeArgv1}"' -Verb RunAs`
-        })()
+      : `Start-Process -FilePath '${safeExecPath}' -ArgumentList '"${safeArgv1}"' -Verb RunAs`
     spawn('powershell.exe', ['-Command', script], {
       detached: true,
       stdio: 'ignore',
