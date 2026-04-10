@@ -1,8 +1,9 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import { readFile, readdir, stat } from 'fs/promises'
+import { writeFileSync, unlinkSync } from 'fs'
 import type { Dirent } from 'fs'
 import { join, basename, relative } from 'path'
-import { execSync, spawn } from 'child_process'
+import { execSync, spawn, exec } from 'child_process'
 
 // Detect admin status before app.whenReady() so we can disable the Chromium sandbox,
 // which is incompatible with elevated processes on Windows (causes immediate renderer crash).
@@ -14,6 +15,45 @@ if (process.platform === 'win32') {
     app.commandLine.appendSwitch('no-sandbox')
   } catch {
     isAdminCached = false
+  }
+}
+
+// Windows UIPI blocks drag-and-drop from lower-integrity processes (e.g. Explorer) to elevated
+// windows. ChangeWindowMessageFilterEx allows the three relevant messages through.
+function allowDragDropFromLowerIntegrity(win: BrowserWindow): void {
+  let scriptPath: string | null = null
+  try {
+    const hwnd = win.getNativeWindowHandle()
+    const hwndNum = hwnd.readBigUInt64LE(0).toString()
+    const script = [
+      "Add-Type -TypeDefinition @'",
+      'using System;',
+      'using System.Runtime.InteropServices;',
+      'public class WinAPI {',
+      '    [DllImport("user32.dll")]',
+      '    public static extern bool ChangeWindowMessageFilterEx(IntPtr hwnd, uint msg, uint action, IntPtr changeInfo);',
+      '}',
+      "'@",
+      `$h = [IntPtr]::new(${hwndNum})`,
+      '[WinAPI]::ChangeWindowMessageFilterEx($h, 0x0233, 1, [IntPtr]::Zero) | Out-Null',  // WM_DROPFILES
+      '[WinAPI]::ChangeWindowMessageFilterEx($h, 0x004A, 1, [IntPtr]::Zero) | Out-Null',  // WM_COPYDATA
+      '[WinAPI]::ChangeWindowMessageFilterEx($h, 0x0049, 1, [IntPtr]::Zero) | Out-Null',  // WM_COPYGLOBALDATA
+    ].join('\r\n')
+
+    scriptPath = join(app.getPath('temp'), `wla-drop-${Date.now()}.ps1`)
+    writeFileSync(scriptPath, script, 'utf8')
+    const captured = scriptPath
+    exec(
+      `powershell.exe -NonInteractive -ExecutionPolicy Bypass -File "${captured}"`,
+      { timeout: 10000 },
+      (err) => {
+        try { unlinkSync(captured) } catch {}
+        if (err) console.error('[main] allowDragDropFromLowerIntegrity failed:', err)
+      }
+    )
+  } catch (err) {
+    if (scriptPath) try { unlinkSync(scriptPath) } catch {}
+    console.error('[main] Failed to set up drag-drop filter:', err)
   }
 }
 
@@ -29,6 +69,10 @@ function createWindow(): void {
   })
 
   win.loadFile(join(__dirname, '..', 'dist', 'index.html'))
+
+  if (isAdminCached && process.platform === 'win32') {
+    allowDragDropFromLowerIntegrity(win)
+  }
 }
 
 async function walkDirectory(
