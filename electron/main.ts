@@ -4,6 +4,19 @@ import type { Dirent } from 'fs'
 import { join, basename, relative } from 'path'
 import { execSync, spawn } from 'child_process'
 
+// Detect admin status before app.whenReady() so we can disable the Chromium sandbox,
+// which is incompatible with elevated processes on Windows (causes immediate renderer crash).
+let isAdminCached = false
+if (process.platform === 'win32') {
+  try {
+    execSync('net session', { stdio: 'pipe', timeout: 2000 })
+    isAdminCached = true
+    app.commandLine.appendSwitch('no-sandbox')
+  } catch {
+    isAdminCached = false
+  }
+}
+
 function createWindow(): void {
   const win = new BrowserWindow({
     width: 1400,
@@ -96,23 +109,19 @@ function registerIpcHandlers(): void {
     return walkDirectory(dirPath, dirPath)
   })
 
-  ipcMain.handle('app:isAdmin', () => {
-    if (process.platform !== 'win32') return false
-    try {
-      execSync('net session', { stdio: 'pipe', timeout: 2000 })
-      return true
-    } catch {
-      return false
-    }
-  })
+  ipcMain.handle('app:isAdmin', () => isAdminCached)
 
   ipcMain.handle('app:relaunchAsAdmin', () => {
     const safeExecPath = process.execPath.replace(/'/g, "''")
-    // Single-quote escaping is sufficient — Windows paths cannot legally contain double-quotes
-    const safeArgv1 = process.argv[1].replace(/'/g, "''")
-    const script = app.isPackaged
-      ? `Start-Process -FilePath '${safeExecPath}' -Verb RunAs`
-      : `Start-Process -FilePath '${safeExecPath}' -ArgumentList '"${safeArgv1}"' -Verb RunAs`
+    let script: string
+    if (app.isPackaged) {
+      script = `Start-Process -FilePath '${safeExecPath}' -Verb RunAs`
+    } else {
+      // Use absolute path to main.js — after UAC elevation the CWD may be C:\Windows\System32,
+      // so process.argv[1] (which may be '.') would resolve to the wrong directory.
+      const mainPath = join(__dirname, 'main.js').replace(/'/g, "''")
+      script = `Start-Process -FilePath '${safeExecPath}' -ArgumentList '"${mainPath}"' -Verb RunAs`
+    }
     spawn('powershell.exe', ['-Command', script], {
       detached: true,
       stdio: 'ignore',
