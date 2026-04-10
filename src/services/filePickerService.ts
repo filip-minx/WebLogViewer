@@ -241,4 +241,19 @@ export class FilePickerService {
       return false;
     }
   }
+
+  /**
+   * Open a file by its absolute native path (Electron only).
+   * Used when the app is launched with a file argument (e.g. double-click / Open With).
+   */
+  static async openNativePath(filePath: string): Promise<WorkspaceSource | null> {
+    if (!window.electronAPI) return null;
+    const buffer = await window.electronAPI.readFileBinary(filePath);
+    if (!buffer) return null;
+    const name = filePath.split(/[\\/]/).pop() ?? 'file';
+    const file = new File([buffer], name);
+    return filePath.toLowerCase().endsWith('.zip')
+      ? { type: 'zip', file, nativePath: filePath }
+      : { type: 'file', file, nativePath: filePath };
+  }
 }

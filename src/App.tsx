@@ -82,6 +82,15 @@ function App() {
     }
   }, []);
 
+  // Open files passed as command-line arguments or forwarded from a second instance
+  useEffect(() => {
+    if (!window.electronAPI) return;
+    return window.electronAPI.onOpenFile(async (filePath: string) => {
+      const source = await FilePickerService.openNativePath(filePath);
+      if (source) await handleWorkspaceOpenRef.current(source);
+    });
+  }, []);
+
   // Services
   const zipService = useRef(new ZipService()).current;
   const parseService = useRef(new ParseService()).current;

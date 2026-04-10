@@ -15,6 +15,7 @@ interface ElectronAPI {
   listDirectory: (dirPath: string) => Promise<ElectronFileEntry[]>;
   isAdmin: () => Promise<boolean>;
   relaunchAsAdmin: () => Promise<void>;
+  onOpenFile: (callback: (filePath: string) => void) => () => void;
 }
 
 interface Window {

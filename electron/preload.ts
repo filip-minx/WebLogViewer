@@ -15,4 +15,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('app:isAdmin'),
   relaunchAsAdmin: () =>
     ipcRenderer.invoke('app:relaunchAsAdmin'),
+  onOpenFile: (callback: (filePath: string) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, filePath: string) => callback(filePath)
+    ipcRenderer.on('open-file', handler)
+    return () => ipcRenderer.removeListener('open-file', handler)
+  },
 })

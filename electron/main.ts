@@ -17,6 +17,14 @@ if (process.platform === 'win32') {
   }
 }
 
+// Extract a file path from argv, ignoring flags and the electron/script entries.
+// packaged:  argv = [exe, filePath?]
+// dev:       argv = [electron, mainScript, filePath?]
+function getFileArgFromArgv(argv: string[]): string | null {
+  const args = argv.slice(app.isPackaged ? 1 : 2)
+  return args.find(a => !a.startsWith('-') && a.trim().length > 0) ?? null
+}
+
 function createWindow(): void {
   const win = new BrowserWindow({
     width: 1400,
@@ -29,6 +37,13 @@ function createWindow(): void {
   })
 
   win.loadFile(join(__dirname, '..', 'dist', 'index.html'))
+
+  const initialFilePath = getFileArgFromArgv(process.argv)
+  if (initialFilePath) {
+    win.webContents.once('did-finish-load', () => {
+      win.webContents.send('open-file', initialFilePath)
+    })
+  }
 }
 
 async function walkDirectory(
@@ -127,6 +142,22 @@ function registerIpcHandlers(): void {
       stdio: 'ignore',
     }).unref()
     app.quit()
+  })
+}
+
+// Single-instance lock: if a second instance is launched (e.g. double-click another file
+// while the app is already open), forward the file path to the existing window and quit.
+const gotSingleInstanceLock = app.requestSingleInstanceLock()
+if (!gotSingleInstanceLock) {
+  app.quit()
+} else {
+  app.on('second-instance', (_event, argv) => {
+    const win = BrowserWindow.getAllWindows()[0]
+    if (!win) return
+    if (win.isMinimized()) win.restore()
+    win.focus()
+    const filePath = getFileArgFromArgv(argv)
+    if (filePath) win.webContents.send('open-file', filePath)
   })
 }
 
