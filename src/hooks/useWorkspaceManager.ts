@@ -45,7 +45,7 @@ function createEmptyWorkspace(id: string, name: string, source: WorkspaceSource)
 export function useWorkspaceManager() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
-  const staleTimers = useRef<Map<string, number>>(new Map());
+  const staleTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const activeWorkspaceIdRef = useRef<string | null>(null);
   const workspacesRef = useRef<Workspace[]>([]);
 

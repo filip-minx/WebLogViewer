@@ -197,7 +197,7 @@ function App() {
         const path = paths[i];
         let content: string;
         if (source.type === 'directory' && source.dirHandle) {
-          content = await FilePickerService.readFileFromDirectory(source.dirHandle, path);
+          content = await FilePickerService.readFileFromDirectory(source.dirHandle, source.nativePath, path);
         } else if (source.type === 'zip' && source.file) {
           content = await zipService.extractFile(source.file, path);
         } else {
