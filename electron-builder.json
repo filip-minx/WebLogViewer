@@ -1,0 +1,19 @@
+{
+  "appId": "com.webloganalyzer.app",
+  "productName": "WebLogAnalyzer",
+  "directories": {
+    "output": "release"
+  },
+  "files": [
+    "dist/**/*",
+    "dist-electron/**/*"
+  ],
+  "win": {
+    "target": [
+      { "target": "portable", "arch": ["x64"] }
+    ]
+  },
+  "portable": {
+    "artifactName": "WebLogAnalyzer-portable.exe"
+  }
+}
