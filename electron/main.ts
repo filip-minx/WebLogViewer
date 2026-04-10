@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import { readFile, readdir, stat } from 'fs/promises'
-import type { Dirent } from 'fs'
+import { watch as fsWatch } from 'fs'
+import type { Dirent, FSWatcher } from 'fs'
 import { join, basename, relative } from 'path'
 import { execSync, spawn } from 'child_process'
 
@@ -74,6 +75,43 @@ async function walkDirectory(
   return results
 }
 
+// File watchers for live reload
+const watchedPaths = new Map<string, FSWatcher>()
+const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>()
+
+function updateWatchers(paths: string[], sender: Electron.WebContents): void {
+  // Close watchers no longer needed
+  for (const [p, watcher] of watchedPaths) {
+    if (!paths.includes(p)) {
+      watcher.close()
+      watchedPaths.delete(p)
+      const t = debounceTimers.get(p)
+      if (t !== undefined) { clearTimeout(t); debounceTimers.delete(p) }
+    }
+  }
+  // Add watchers for new paths
+  for (const p of paths) {
+    if (watchedPaths.has(p)) continue
+    try {
+      const watcher = fsWatch(p, () => {
+        const existing = debounceTimers.get(p)
+        if (existing !== undefined) clearTimeout(existing)
+        debounceTimers.set(p, setTimeout(() => {
+          debounceTimers.delete(p)
+          if (!sender.isDestroyed()) sender.send('file-changed', p)
+        }, 500))
+      })
+      watcher.on('error', () => {
+        watcher.close()
+        watchedPaths.delete(p)
+      })
+      watchedPaths.set(p, watcher)
+    } catch {
+      // File may not exist yet; skip silently
+    }
+  }
+}
+
 function registerIpcHandlers(): void {
   ipcMain.handle('dialog:openFile', async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog({
@@ -125,6 +163,10 @@ function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('app:isAdmin', () => isAdminCached)
+
+  ipcMain.handle('fs:watchPaths', (event, paths: string[]) => {
+    updateWatchers(paths, event.sender)
+  })
 
   ipcMain.handle('app:relaunchAsAdmin', () => {
     const safeExecPath = process.execPath.replace(/'/g, "''")

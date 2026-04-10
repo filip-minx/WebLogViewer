@@ -91,6 +91,76 @@ function App() {
     });
   }, []);
 
+  // Tell main process which paths to watch for the active workspace
+  useEffect(() => {
+    if (!window.electronAPI) return;
+    const ws = activeWorkspace;
+    if (!ws) {
+      window.electronAPI.watchPaths([]);
+      return;
+    }
+    const paths: string[] = [];
+    if (ws.source.type === 'file' && ws.source.nativePath) {
+      paths.push(ws.source.nativePath);
+    } else if (ws.source.type === 'zip' && ws.source.nativePath) {
+      paths.push(ws.source.nativePath);
+    } else if (ws.source.type === 'directory' && ws.source.nativePath) {
+      // Watch the individual selected files, not the whole directory
+      for (const rel of ws.selectedFilePaths) {
+        const sep = ws.source.nativePath.includes('\\') ? '\\' : '/';
+        paths.push(ws.source.nativePath + sep + rel.replace(/\//g, sep));
+      }
+    }
+    window.electronAPI.watchPaths(paths);
+    return () => { window.electronAPI!.watchPaths([]); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeWorkspace?.id, activeWorkspace?.selectedFilePaths?.join('\0')]);
+
+  // React to file changes reported by the main process
+  useEffect(() => {
+    if (!window.electronAPI) return;
+    return window.electronAPI.onFileChanged(async (changedPath: string) => {
+      const wsId = activeWorkspaceIdRef.current;
+      const ws = workspacesRef.current.find(w => w.id === wsId);
+      if (!ws) return;
+
+      if (ws.source.type === 'file' && ws.source.nativePath === changedPath) {
+        // Re-read the file content fresh (the File object is immutable/stale)
+        try {
+          const content = await window.electronAPI!.readFile(changedPath);
+          let fileEntries: ParsedLogEntry[] = [];
+          let fileColumns: ColumnDef[] = [];
+          await parseService.parseFile(content, ws.source.file?.name ?? changedPath, progress => {
+            if (progress.parserId && progress.parserName && progress.columns) {
+              fileColumns = progress.columns;
+            }
+            fileEntries = progress.entries;
+          });
+          updateWorkspace(ws.id, {
+            parsedEntries: fileEntries,
+            columns: fileColumns,
+            parseState: {
+              fileName: ws.source.file?.name ?? changedPath,
+              status: 'complete',
+              progress: 100,
+              totalEntries: fileEntries.length,
+            },
+            status: 'ready',
+          });
+        } catch (err) {
+          console.error('[App] Live reload failed for file:', err);
+        }
+      } else if (ws.source.type === 'zip' && ws.source.nativePath === changedPath) {
+        // Re-open the zip from disk
+        const source = await FilePickerService.openNativePath(changedPath);
+        if (source) await handleWorkspaceOpenRef.current(source);
+      } else if (ws.source.type === 'directory' && ws.selectedFilePaths.length > 0) {
+        // Re-parse the currently selected files
+        await handleTreeFileSelectRef.current(ws.selectedFilePaths);
+      }
+    });
+  }, []);
+
   // Services
   const zipService = useRef(new ZipService()).current;
   const parseService = useRef(new ParseService()).current;
@@ -189,6 +259,12 @@ function App() {
   const handleWorkspaceOpenRef = useRef(handleWorkspaceOpen);
   useEffect(() => { handleWorkspaceOpenRef.current = handleWorkspaceOpen; });
 
+  // Ref to access workspaces/activeWorkspaceId inside effects with empty deps
+  const workspacesRef = useRef(workspaces);
+  useEffect(() => { workspacesRef.current = workspaces; });
+  const activeWorkspaceIdRef = useRef(activeWorkspaceId);
+  useEffect(() => { activeWorkspaceIdRef.current = activeWorkspaceId; });
+
   // Handle file selection from tree
   const handleTreeFileSelect = async (paths: string[]) => {
     if (!activeWorkspace || paths.length === 0) return;
@@ -281,6 +357,9 @@ function App() {
       });
     }
   };
+
+  const handleTreeFileSelectRef = useRef(handleTreeFileSelect);
+  useEffect(() => { handleTreeFileSelectRef.current = handleTreeFileSelect; });
 
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();

@@ -16,6 +16,8 @@ interface ElectronAPI {
   isAdmin: () => Promise<boolean>;
   relaunchAsAdmin: () => Promise<void>;
   onOpenFile: (callback: (filePath: string) => void) => () => void;
+  watchPaths: (paths: string[]) => Promise<void>;
+  onFileChanged: (callback: (filePath: string) => void) => () => void;
 }
 
 interface Window {

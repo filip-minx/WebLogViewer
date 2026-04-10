@@ -13,6 +13,13 @@ ipcRenderer.on('open-file', (_event, filePath: string) => {
   }
 })
 
+// Register file-changed listener immediately for the same reason.
+let fileChangedCallback: ((filePath: string) => void) | null = null
+
+ipcRenderer.on('file-changed', (_event, filePath: string) => {
+  fileChangedCallback?.(filePath)
+})
+
 contextBridge.exposeInMainWorld('electronAPI', {
   openFile: () =>
     ipcRenderer.invoke('dialog:openFile'),
@@ -37,5 +44,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
       setTimeout(() => callback(path), 0)
     }
     return () => { openFileCallback = null }
+  },
+  watchPaths: (paths: string[]) =>
+    ipcRenderer.invoke('fs:watchPaths', paths),
+  onFileChanged: (callback: (filePath: string) => void) => {
+    fileChangedCallback = callback
+    return () => { fileChangedCallback = null }
   },
 })
