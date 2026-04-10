@@ -1,8 +1,8 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import { readFile, readdir, stat } from 'fs/promises'
+import type { Dirent } from 'fs'
 import { join, basename, relative } from 'path'
-import { execSync } from 'child_process'
-import { spawn } from 'child_process'
+import { execSync, spawn } from 'child_process'
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -22,12 +22,17 @@ async function walkDirectory(
   dir: string,
   base: string
 ): Promise<Array<{ path: string; size: number; isDirectory: boolean }>> {
-  const entries = await readdir(dir, { withFileTypes: true })
+  let entries: Dirent[]
+  try {
+    entries = await readdir(dir, { withFileTypes: true })
+  } catch {
+    return []  // skip inaccessible directories silently
+  }
   const results: Array<{ path: string; size: number; isDirectory: boolean }> = []
   for (const entry of entries) {
     const fullPath = join(dir, entry.name)
     const relPath = relative(base, fullPath).replace(/\\/g, '/')
-    if (entry.isDirectory()) {
+    if (entry.isDirectory() && !entry.isSymbolicLink()) {
       results.push({ path: relPath, size: 0, isDirectory: true })
       const children = await walkDirectory(fullPath, base)
       results.push(...children)
@@ -100,9 +105,13 @@ function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('app:relaunchAsAdmin', () => {
+    const safeExecPath = process.execPath.replace(/'/g, "''")
     const script = app.isPackaged
-      ? `Start-Process -FilePath '${process.execPath}' -Verb RunAs`
-      : `Start-Process -FilePath '${process.execPath}' -ArgumentList '"${process.argv[1]}"' -Verb RunAs`
+      ? `Start-Process -FilePath '${safeExecPath}' -Verb RunAs`
+      : (() => {
+          const safeArgv1 = process.argv[1].replace(/'/g, "''")
+          return `Start-Process -FilePath '${safeExecPath}' -ArgumentList '"${safeArgv1}"' -Verb RunAs`
+        })()
     spawn('powershell.exe', ['-Command', script], {
       detached: true,
       stdio: 'ignore',
