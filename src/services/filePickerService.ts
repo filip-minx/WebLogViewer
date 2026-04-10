@@ -129,7 +129,8 @@ export class FilePickerService {
         .filter(e => !e.isDirectory)
         .map(e => {
           const name = e.path.split('/').pop() ?? e.path;
-          const ext = name.includes('.') ? name.split('.').pop() ?? '' : '';
+          const dotIndex = name.lastIndexOf('.');
+          const ext = dotIndex > 0 ? name.slice(dotIndex + 1) : '';
           return {
             path: e.path,
             uncompressedSize: e.size,
@@ -146,7 +147,8 @@ export class FilePickerService {
       const path = basePath ? `${basePath}/${name}` : name;
       if (handle.kind === 'file') {
         const file = await (handle as FileSystemFileHandle).getFile();
-        const ext = name.includes('.') ? name.split('.').pop() || '' : '';
+        const dotIndex = name.lastIndexOf('.');
+        const ext = dotIndex > 0 ? name.slice(dotIndex + 1) : '';
         entries.push({
           path,
           uncompressedSize: file.size,
