@@ -108,7 +108,8 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('app:relaunchAsAdmin', () => {
     const safeExecPath = process.execPath.replace(/'/g, "''")
-    const safeArgv1 = process.argv[1].replace(/'/g, "''").replace(/"/g, '\\"')
+    // Single-quote escaping is sufficient — Windows paths cannot legally contain double-quotes
+    const safeArgv1 = process.argv[1].replace(/'/g, "''")
     const script = app.isPackaged
       ? `Start-Process -FilePath '${safeExecPath}' -Verb RunAs`
       : `Start-Process -FilePath '${safeExecPath}' -ArgumentList '"${safeArgv1}"' -Verb RunAs`
