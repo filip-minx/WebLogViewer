@@ -37,3 +37,7 @@ dist-ssr
 
 # Git worktrees
 .worktrees/
+
+# Electron builder
+dist-electron
+release
