@@ -77,7 +77,9 @@ function App() {
   // Electron admin state — null in browser, true/false in Electron
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   useEffect(() => {
-    window.electronAPI?.isAdmin().then(setIsAdmin);
+    if (window.electronAPI) {
+      window.electronAPI.isAdmin().then(setIsAdmin);
+    }
   }, []);
 
   // Services
