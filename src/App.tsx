@@ -356,10 +356,10 @@ function App() {
     <ErrorBoundary>
       <div
         className="app"
-        onDragEnter={handleDragEnter}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
+        onDragEnter={isAdmin ? undefined : handleDragEnter}
+        onDragOver={isAdmin ? undefined : handleDragOver}
+        onDragLeave={isAdmin ? undefined : handleDragLeave}
+        onDrop={isAdmin ? undefined : handleDrop}
       >
         {isDragging && (
           <div className="drop-overlay">
@@ -454,6 +454,11 @@ function App() {
                       ? 'Open a workspace to begin'
                       : 'Select a log file from the tree to view its contents'}
                   </p>
+                  {isAdmin && !activeWorkspace && (
+                    <p className="empty-state-note">
+                      Drag and drop from File Explorer is unavailable when running as administrator (Windows UIPI restriction). Use the Open File or Open Directory buttons.
+                    </p>
+                  )}
                 </div>
               ) : isRawDisplay ? (
                 <div className="raw-content-viewer">
