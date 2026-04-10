@@ -74,6 +74,12 @@ function App() {
   const dragCounter = useRef(0);
   const [isDragging, setIsDragging] = useState(false);
 
+  // Electron admin state — null in browser, true/false in Electron
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  useEffect(() => {
+    window.electronAPI?.isAdmin().then(setIsAdmin);
+  }, []);
+
   // Services
   const zipService = useRef(new ZipService()).current;
   const parseService = useRef(new ParseService()).current;
@@ -102,8 +108,8 @@ function App() {
         fileEntries: entries.filter(e => !e.isDirectory),
         status: 'ready',
       });
-    } else if (source.type === 'directory' && source.dirHandle) {
-      const entries = await FilePickerService.listDirectoryEntries(source.dirHandle);
+    } else if (source.type === 'directory' && (source.dirHandle || source.nativePath)) {
+      const entries = await FilePickerService.listDirectoryEntries(source.dirHandle ?? undefined, source.nativePath);
       updateWorkspace(workspaceId, {
         fileEntries: entries,
         status: 'ready',
@@ -145,7 +151,7 @@ function App() {
   const handleWorkspaceOpen = async (source: WorkspaceSource) => {
     try {
       const name = source.type === 'directory'
-        ? (source.dirHandle?.name ?? 'Unnamed')
+        ? (source.dirHandle?.name ?? source.nativePath?.split(/[\\/]/).pop() ?? 'Unnamed')
         : (source.file?.name ?? 'Unnamed');
 
       const existing = workspaces.find(w => w.name === name);
@@ -176,7 +182,7 @@ function App() {
   const handleTreeFileSelect = async (paths: string[]) => {
     if (!activeWorkspace || paths.length === 0) return;
     const source = activeWorkspace.source;
-    if (source.type === 'directory' && !source.dirHandle) return;
+    if (source.type === 'directory' && !source.dirHandle && !source.nativePath) return;
     if (source.type === 'zip' && !source.file) return;
 
     const fileLabel = paths.length === 1 ? paths[0] : `${paths.length} files`;
@@ -196,8 +202,8 @@ function App() {
       for (let i = 0; i < paths.length; i++) {
         const path = paths[i];
         let content: string;
-        if (source.type === 'directory' && source.dirHandle) {
-          content = await FilePickerService.readFileFromDirectory(source.dirHandle, source.nativePath, path);
+        if (source.type === 'directory' && (source.dirHandle || source.nativePath)) {
+          content = await FilePickerService.readFileFromDirectory(source.dirHandle ?? undefined, source.nativePath, path);
         } else if (source.type === 'zip' && source.file) {
           content = await zipService.extractFile(source.file, path);
         } else {
@@ -483,6 +489,7 @@ function App() {
             parseState={activeWorkspace?.parseState || null}
             totalEntries={activeWorkspace?.parsedEntries.length || 0}
             filteredEntries={filteredEntries.length}
+            isAdmin={isAdmin}
           />
         </footer>
 

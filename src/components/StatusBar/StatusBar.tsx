@@ -5,12 +5,14 @@ interface StatusBarProps {
   parseState: FileParseState | null;
   totalEntries: number;
   filteredEntries: number;
+  isAdmin: boolean | null;
 }
 
 export const StatusBar: React.FC<StatusBarProps> = ({
   parseState,
   totalEntries,
   filteredEntries,
+  isAdmin,
 }) => {
   return (
     <div className="status-bar">
@@ -55,6 +57,18 @@ export const StatusBar: React.FC<StatusBarProps> = ({
         <div className="status-section error">
           <span className="status-label">Error:</span>
           <span className="status-value">{parseState.error}</span>
+        </div>
+      )}
+
+      {window.electronAPI && isAdmin === false && (
+        <div className="status-section status-section--admin">
+          <button
+            className="status-admin-button"
+            onClick={() => window.electronAPI?.relaunchAsAdmin()}
+            title="This app is not running as Administrator. Click to relaunch with elevated privileges."
+          >
+            ⚠ Relaunch as Admin
+          </button>
         </div>
       )}
     </div>
