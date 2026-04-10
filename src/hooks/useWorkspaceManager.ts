@@ -73,18 +73,21 @@ export function useWorkspaceManager() {
             source = {
               type: 'directory',
               dirHandle: handle ? (handle as FileSystemDirectoryHandle) : null,
+              nativePath: meta.nativePath,
             };
           } else if (meta.sourceType === 'zip') {
             source = {
               type: 'zip',
               file: null,
               fileHandle: handle ? (handle as FileSystemFileHandle) : undefined,
+              nativePath: meta.nativePath,
             };
           } else {
             source = {
               type: 'file',
               file: null,
               fileHandle: handle ? (handle as FileSystemFileHandle) : undefined,
+              nativePath: meta.nativePath,
             };
           }
           return {
@@ -122,6 +125,7 @@ export function useWorkspaceManager() {
         lastAccessed: ws.lastAccessed,
         selectedFilePaths: ws.selectedFilePaths,
         filterState: ws.filterState,
+        nativePath: ws.source.nativePath,
       }));
       WorkspaceStorage.saveWorkspaces(metadata);
       if (activeWorkspaceId) WorkspaceStorage.saveActiveWorkspace(activeWorkspaceId);
@@ -200,6 +204,7 @@ export function useWorkspaceManager() {
       lastAccessed: ws.lastAccessed,
       selectedFilePaths: ws.selectedFilePaths,
       filterState: ws.filterState,
+      nativePath: ws.source.nativePath,
     }));
     WorkspaceStorage.saveWorkspaces(metadata);
     WorkspaceStorage.saveActiveWorkspace(nextActiveId);
@@ -231,6 +236,12 @@ export function useWorkspaceManager() {
       if (!ws || ws.status !== 'stale') return false;
 
       if (ws.source.type === 'directory') {
+        // Electron native path — no permission dialog needed
+        if (ws.source.nativePath) {
+          updateWorkspace(id, { status: 'parsing', lastAccessed: Date.now() });
+          setActiveWorkspaceId(id);
+          return true;
+        }
         const dirHandle = ws.source.dirHandle;
         if (!dirHandle) return false;
         const granted = await FilePickerService.requestDirectoryPermission(dirHandle);
@@ -243,6 +254,23 @@ export function useWorkspaceManager() {
         setActiveWorkspaceId(id);
         return true;
       } else {
+        // Electron native path for file/zip — read bytes directly
+        if (ws.source.nativePath && window.electronAPI) {
+          const nativePath = ws.source.nativePath;
+          const name = nativePath.split(/[\\/]/).pop() ?? 'file';
+          const buffer = await window.electronAPI.readFileBinary(nativePath);
+          if (!buffer) return false;
+          const file = new File([buffer], name);
+          updateWorkspace(id, {
+            source: ws.source.type === 'zip'
+              ? { type: 'zip', file, nativePath }
+              : { type: 'file', file, nativePath },
+            status: 'parsing',
+            lastAccessed: Date.now(),
+          });
+          setActiveWorkspaceId(id);
+          return true;
+        }
         const fileHandle = ws.source.fileHandle;
         if (!fileHandle) return false;
         const file = await FilePickerService.getFileFromHandle(fileHandle);
