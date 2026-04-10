@@ -1,5 +1,18 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
+// Register the open-file listener immediately (before contextBridge / before React mounts)
+// so the message is never lost due to a race with the renderer's useEffect.
+let pendingFilePath: string | null = null
+let openFileCallback: ((filePath: string) => void) | null = null
+
+ipcRenderer.on('open-file', (_event, filePath: string) => {
+  if (openFileCallback) {
+    openFileCallback(filePath)
+  } else {
+    pendingFilePath = filePath
+  }
+})
+
 contextBridge.exposeInMainWorld('electronAPI', {
   openFile: () =>
     ipcRenderer.invoke('dialog:openFile'),
@@ -16,8 +29,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   relaunchAsAdmin: () =>
     ipcRenderer.invoke('app:relaunchAsAdmin'),
   onOpenFile: (callback: (filePath: string) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, filePath: string) => callback(filePath)
-    ipcRenderer.on('open-file', handler)
-    return () => ipcRenderer.removeListener('open-file', handler)
+    openFileCallback = callback
+    // Flush any path that arrived before this callback was registered
+    if (pendingFilePath !== null) {
+      const path = pendingFilePath
+      pendingFilePath = null
+      setTimeout(() => callback(path), 0)
+    }
+    return () => { openFileCallback = null }
   },
 })
