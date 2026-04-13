@@ -61,16 +61,11 @@ export const StatusBar: React.FC<StatusBarProps> = ({
       )}
 
       {window.electronAPI && isAdmin === false && (
-        <div className="status-section status-section--admin">
-          <button
-            className="status-admin-button"
-            onClick={() => window.electronAPI?.relaunchAsAdmin()}
-            title="This app is not running as Administrator. Click to relaunch with elevated privileges."
-          >
-            ⚠ Relaunch as Admin
-          </button>
+        <div className="status-section status-section--warning">
+          <span className="status-warning">⚠ Not running as administrator — some files may not be visible.</span>
         </div>
       )}
+
     </div>
   );
 };
