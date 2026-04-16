@@ -117,8 +117,8 @@ export function useWorkspaceManager() {
 
   // Auto-save workspace metadata to localStorage
   useEffect(() => {
-    const interval = setInterval(() => {
-      const metadata: WorkspaceMetadata[] = workspaces.map(ws => ({
+    const saveNow = () => {
+      const metadata: WorkspaceMetadata[] = workspacesRef.current.map(ws => ({
         id: ws.id,
         name: ws.name,
         sourceType: ws.source.type,
@@ -128,10 +128,17 @@ export function useWorkspaceManager() {
         nativePath: ws.source.nativePath,
       }));
       WorkspaceStorage.saveWorkspaces(metadata);
-      if (activeWorkspaceId) WorkspaceStorage.saveActiveWorkspace(activeWorkspaceId);
-    }, AUTO_SAVE_INTERVAL);
-    return () => clearInterval(interval);
-  }, [workspaces, activeWorkspaceId]);
+      const activeId = activeWorkspaceIdRef.current;
+      if (activeId) WorkspaceStorage.saveActiveWorkspace(activeId);
+    };
+
+    const interval = setInterval(saveNow, AUTO_SAVE_INTERVAL);
+    window.addEventListener('beforeunload', saveNow);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('beforeunload', saveNow);
+    };
+  }, []);
 
   // Stale timers for inactive workspaces
   useEffect(() => {
@@ -169,8 +176,23 @@ export function useWorkspaceManager() {
   const addWorkspace = useCallback((source: WorkspaceSource, name: string) => {
     const id = nanoid();
     const newWorkspace = createEmptyWorkspace(id, name, source);
-    setWorkspaces(prev => [...prev, newWorkspace]);
+    setWorkspaces(prev => {
+      const next = [...prev, newWorkspace];
+      // Immediately persist metadata so it survives a quick app close
+      const metadata: WorkspaceMetadata[] = next.map(ws => ({
+        id: ws.id,
+        name: ws.name,
+        sourceType: ws.source.type,
+        lastAccessed: ws.lastAccessed,
+        selectedFilePaths: ws.selectedFilePaths,
+        filterState: ws.filterState,
+        nativePath: ws.source.nativePath,
+      }));
+      WorkspaceStorage.saveWorkspaces(metadata);
+      return next;
+    });
     setActiveWorkspaceId(id);
+    WorkspaceStorage.saveActiveWorkspace(id);
     // Immediately persist handle to IndexedDB
     if (source.type === 'directory' && source.dirHandle) {
       WorkspaceStorage.saveHandle(id, source.dirHandle);
@@ -227,64 +249,56 @@ export function useWorkspaceManager() {
 
   /**
    * Attempt to reload a stale workspace from its stored handle.
-   * Returns true if successful (workspace status set to 'parsing'),
-   * false if permission denied or no handle — caller must prompt re-pick.
+   * Returns the refreshed WorkspaceSource on success (caller must pass it to
+   * openWorkspaceContent), or null if permission was denied / no handle available.
    */
   const reloadStaleWorkspace = useCallback(
-    async (id: string): Promise<boolean> => {
+    async (id: string): Promise<WorkspaceSource | null> => {
       const ws = workspaces.find(w => w.id === id);
-      if (!ws || ws.status !== 'stale') return false;
+      if (!ws || ws.status !== 'stale') return null;
 
       if (ws.source.type === 'directory') {
         // Electron native path — no permission dialog needed
         if (ws.source.nativePath) {
+          const source: WorkspaceSource = { type: 'directory', dirHandle: null, nativePath: ws.source.nativePath };
           updateWorkspace(id, { status: 'parsing', lastAccessed: Date.now() });
           setActiveWorkspaceId(id);
-          return true;
+          return source;
         }
         const dirHandle = ws.source.dirHandle;
-        if (!dirHandle) return false;
+        if (!dirHandle) return null;
         const granted = await FilePickerService.requestDirectoryPermission(dirHandle);
-        if (!granted) return false;
-        updateWorkspace(id, {
-          source: { type: 'directory', dirHandle },
-          status: 'parsing',
-          lastAccessed: Date.now(),
-        });
+        if (!granted) return null;
+        const source: WorkspaceSource = { type: 'directory', dirHandle };
+        updateWorkspace(id, { source, status: 'parsing', lastAccessed: Date.now() });
         setActiveWorkspaceId(id);
-        return true;
+        return source;
       } else {
         // Electron native path for file/zip — read bytes directly
         if (ws.source.nativePath && window.electronAPI) {
           const nativePath = ws.source.nativePath;
           const name = nativePath.split(/[\\/]/).pop() ?? 'file';
           const buffer = await window.electronAPI.readFileBinary(nativePath);
-          if (!buffer) return false;
+          if (!buffer) return null;
           const file = new File([buffer], name);
-          updateWorkspace(id, {
-            source: ws.source.type === 'zip'
-              ? { type: 'zip', file, nativePath }
-              : { type: 'file', file, nativePath },
-            status: 'parsing',
-            lastAccessed: Date.now(),
-          });
+          const source: WorkspaceSource = ws.source.type === 'zip'
+            ? { type: 'zip', file, nativePath }
+            : { type: 'file', file, nativePath };
+          updateWorkspace(id, { source, status: 'parsing', lastAccessed: Date.now() });
           setActiveWorkspaceId(id);
-          return true;
+          return source;
         }
         const fileHandle = ws.source.fileHandle;
-        if (!fileHandle) return false;
+        if (!fileHandle) return null;
         const file = await FilePickerService.getFileFromHandle(fileHandle);
-        if (!file) return false;
-        updateWorkspace(id, {
-          source: ws.source.type === 'zip'
-            ? { type: 'zip', file, fileHandle }
-            : { type: 'file', file, fileHandle },
-          status: 'parsing',
-          lastAccessed: Date.now(),
-        });
+        if (!file) return null;
+        const source: WorkspaceSource = ws.source.type === 'zip'
+          ? { type: 'zip', file, fileHandle }
+          : { type: 'file', file, fileHandle };
+        updateWorkspace(id, { source, status: 'parsing', lastAccessed: Date.now() });
         setActiveWorkspaceId(id);
         WorkspaceStorage.saveHandle(id, fileHandle);
-        return true;
+        return source;
       }
     },
     [workspaces, updateWorkspace]

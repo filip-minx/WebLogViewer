@@ -20,10 +20,22 @@ if (process.platform === 'win32') {
 
 // Extract a file path from argv, ignoring flags and the electron/script entries.
 // packaged:  argv = [exe, filePath?]
-// dev:       argv = [electron, mainScript, filePath?]
+// dev:       argv = [electron, [flags...], mainScript, filePath?]
+// Extra Chromium flags (e.g. --remote-debugging-port) may appear before mainScript,
+// so we cannot rely on a fixed slice index in dev mode.
 function getFileArgFromArgv(argv: string[]): string | null {
-  const args = argv.slice(app.isPackaged ? 1 : 2)
-  return args.find(a => !a.startsWith('-') && a.trim().length > 0) ?? null
+  if (app.isPackaged) {
+    return argv.slice(1).find(a => !a.startsWith('-') && a.trim().length > 0) ?? null
+  }
+  // Dev: skip electron.exe, all --flags, and the main script itself.
+  // Normalise both paths before comparing to handle case/separator differences on Windows.
+  const mainResolved = require('path').resolve(__filename).toLowerCase()
+  return argv.find((a, i) =>
+    i > 0 &&
+    !a.startsWith('-') &&
+    a.trim().length > 0 &&
+    require('path').resolve(a).toLowerCase() !== mainResolved
+  ) ?? null
 }
 
 function createWindow(): void {

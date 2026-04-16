@@ -237,9 +237,9 @@ function App() {
 
       const existing = workspaces.find(w => w.name === name);
       if (existing?.status === 'stale') {
-        const reloaded = await reloadStaleWorkspace(existing.id);
-        if (reloaded) {
-          await openWorkspaceContent(existing.id, source);
+        const reloadedSource = await reloadStaleWorkspace(existing.id);
+        if (reloadedSource) {
+          await openWorkspaceContent(existing.id, reloadedSource);
           return;
         }
       }
@@ -464,9 +464,9 @@ function App() {
                 const ws = workspaces.find(w => w.id === id);
                 if (!ws) return;
                 if (ws.status === 'stale') {
-                  const reloaded = await reloadStaleWorkspace(id);
-                  if (reloaded) {
-                    await openWorkspaceContent(id, ws.source);
+                  const reloadedSource = await reloadStaleWorkspace(id);
+                  if (reloadedSource) {
+                    await openWorkspaceContent(id, reloadedSource);
                   } else {
                     const source = ws.source.type === 'directory'
                       ? await FilePickerService.pickDirectory()

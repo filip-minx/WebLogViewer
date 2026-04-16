@@ -209,10 +209,10 @@ export class FilePickerService {
   static async getFileFromHandle(handle: FileSystemFileHandle): Promise<File | null> {
     try {
       const permission = await handle.queryPermission({ mode: 'read' });
-      if (permission === 'granted') return handle.getFile();
+      if (permission === 'granted') return await handle.getFile();
       if (permission === 'prompt') {
         const newPermission = await handle.requestPermission({ mode: 'read' });
-        if (newPermission === 'granted') return handle.getFile();
+        if (newPermission === 'granted') return await handle.getFile();
       }
       return null;
     } catch (error) {
