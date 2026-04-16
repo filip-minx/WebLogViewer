@@ -155,6 +155,87 @@ Filter controls are dynamically generated from parser-provided column metadata:
 - Timeline views
 - Correlation across files
 
+## Testing
+
+Always test the **Electron build**, not the Vite dev server. Use Playwright with CDP.
+
+```bash
+# Install Playwright (once)
+python -m pip install playwright
+playwright install chromium
+
+# Build before every test run
+npm run build:electron
+```
+
+### Launch pattern
+
+```python
+import subprocess, time, socket, tempfile
+from playwright.sync_api import sync_playwright
+
+ELECTRON_EXE = r"C:\git\WebLogAnalyzer\node_modules\electron\dist\electron.exe"
+MAIN_JS      = r"C:\git\WebLogAnalyzer\dist-electron\main.js"
+DEBUG_PORT   = 9333
+
+# Kill any lingering Electron first
+subprocess.run("taskkill /F /IM electron.exe /T", shell=True, capture_output=True)
+time.sleep(1)
+
+user_data = tempfile.mkdtemp()  # isolated profile — required
+proc = subprocess.Popen([
+    ELECTRON_EXE,
+    f"--remote-debugging-port={DEBUG_PORT}",
+    "--remote-allow-origins=*",
+    f"--user-data-dir={user_data}",
+    MAIN_JS,
+    # optional: r"C:\path\to\file.log"  ← auto-opens via open-file IPC
+], cwd=r"C:\git\WebLogAnalyzer", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+# Wait for CDP port
+deadline = time.time() + 20
+while time.time() < deadline:
+    try:
+        with socket.create_connection(("127.0.0.1", DEBUG_PORT), timeout=1): break
+    except OSError: time.sleep(0.3)
+time.sleep(2)
+
+with sync_playwright() as p:
+    browser = p.chromium.connect_over_cdp(f"http://127.0.0.1:{DEBUG_PORT}")
+    page = next(pg for ctx in browser.contexts for pg in ctx.pages if pg.url.startswith("file://"))
+    page.wait_for_load_state("domcontentloaded")
+    # ... test logic ...
+    browser.close()
+
+proc.terminate()
+```
+
+### Gotchas
+
+- **Kill lingering processes before launch** — stale Electron holds the debug port; new launch connects to the old process instead
+- **Wait for port release after kill** — poll until port is closed before launching next instance
+- **`--user-data-dir` is required** — without it tests share the real app profile and pollute each other
+- **`PYTHONIOENCODING=utf-8`** — set when running via PowerShell to avoid cp1252 errors on emoji in workspace text
+- **`playwright.electron` doesn't exist in Python** — use CDP approach above
+- **Python command is `python`** (not `python3`); pip is `python -m pip`
+
+### Selectors
+
+- Workspace items: `.workspace-item` (filter with `has_text=`)
+- Log table rows: `[role='row']` (subtract 1 for header), fallback `tr`
+- Add workspace button: `.workspace-add-btn`
+
+### Sample log file (pipe-separated, matches pipeWindowsParser)
+
+```
+2026-04-16_10-00-00.000|INFO|TestSource|Application started
+2026-04-16_10-00-01.123|ERROR|TestSource|Failed to connect
+2026-04-16_10-00-02.456|WARN|NetworkModule|Retrying connection
+2026-04-16_10-00-03.789|INFO|TestSource|Connection established
+```
+
+Full test suite: `test_electron_persistence.py`
+
 ## Key Principles
 
 - Client-side only processing (no backend uploads)
