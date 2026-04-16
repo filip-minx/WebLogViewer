@@ -171,11 +171,13 @@ npm run build:electron
 ### Launch pattern
 
 ```python
-import subprocess, time, socket, tempfile
+import subprocess, time, socket, tempfile, os
+from pathlib import Path
 from playwright.sync_api import sync_playwright
 
-ELECTRON_EXE = r"C:\git\WebLogAnalyzer\node_modules\electron\dist\electron.exe"
-MAIN_JS      = r"C:\git\WebLogAnalyzer\dist-electron\main.js"
+ROOT         = Path(__file__).parent  # repo root
+ELECTRON_EXE = ROOT / "node_modules/electron/dist/electron.exe"
+MAIN_JS      = ROOT / "dist-electron/main.js"
 DEBUG_PORT   = 9333
 
 # Kill any lingering Electron first
@@ -184,13 +186,13 @@ time.sleep(1)
 
 user_data = tempfile.mkdtemp()  # isolated profile — required
 proc = subprocess.Popen([
-    ELECTRON_EXE,
+    str(ELECTRON_EXE),
     f"--remote-debugging-port={DEBUG_PORT}",
     "--remote-allow-origins=*",
     f"--user-data-dir={user_data}",
-    MAIN_JS,
-    # optional: r"C:\path\to\file.log"  ← auto-opens via open-file IPC
-], cwd=r"C:\git\WebLogAnalyzer", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    str(MAIN_JS),
+    # optional: "/path/to/file.log"  ← auto-opens via open-file IPC
+], cwd=str(ROOT), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 # Wait for CDP port
 deadline = time.time() + 20
