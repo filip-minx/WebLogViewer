@@ -42,6 +42,7 @@ function createWindow(): void {
   const win = new BrowserWindow({
     width: 1400,
     height: 900,
+    icon: join(__dirname, '..', 'build', 'icon.ico'),
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
       contextIsolation: true,
