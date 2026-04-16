@@ -11,11 +11,9 @@
   ],
   "win": {
     "target": [
-      { "target": "portable", "arch": ["x64"] }
+      { "target": "zip", "arch": ["x64"] }
     ],
-    "icon": "build/icon.ico"
-  },
-  "portable": {
-    "artifactName": "WebLogAnalyzer-portable.exe"
+    "icon": "build/icon.ico",
+    "artifactName": "WebLogAnalyzer-${version}-win-x64.zip"
   }
 }

@@ -12,7 +12,7 @@
     "build:electron-main": "node scripts/setup-electron-dist.mjs && tsc -p tsconfig.electron.json",
     "build:electron": "npm run build:electron-main && vite build --config vite.config.electron.ts",
     "electron:dev": "npm run build:electron && electron .",
-    "electron:dist": "npm run build:electron && electron-builder --win portable"
+    "electron:dist": "npm run build:electron && electron-builder --win zip"
   },
   "dependencies": {
     "@tanstack/react-table": "^8.11.0",
