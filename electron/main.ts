@@ -40,7 +40,7 @@ function getFileArgFromArgv(argv: string[]): string | null {
 
 function createWindow(): void {
   const win = new BrowserWindow({
-    width: 1400,
+    width: 1610,
     height: 900,
     icon: join(__dirname, '..', 'build', 'icon.ico'),
     webPreferences: {
