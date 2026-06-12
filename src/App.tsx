@@ -71,6 +71,7 @@ function App() {
   const [selectedEntry, setSelectedEntry] = useState<ParsedLogEntry | null>(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [searchMatchIndex, setSearchMatchIndex] = useState(0);
+  const [searchScrollTarget, setSearchScrollTarget] = useState(-1);
 
   const dragCounter = useRef(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -408,7 +409,7 @@ function App() {
     }, []);
   }, [filteredEntries, activeWorkspace?.filterState.globalSearch]);
 
-  // When search term changes, start from the first match after the currently selected row
+  // When search term changes, compute the starting index (no scroll yet)
   useEffect(() => {
     if (searchMatchIndices.length === 0) {
       setSearchMatchIndex(0);
@@ -421,11 +422,19 @@ function App() {
     setSearchMatchIndex(firstAfter === -1 ? 0 : firstAfter);
   }, [activeWorkspace?.filterState.globalSearch]);
 
-  const handleSearchNext = () =>
-    setSearchMatchIndex(i => (searchMatchIndices.length === 0 ? 0 : (i + 1) % searchMatchIndices.length));
+  const handleSearchNext = () => {
+    if (searchMatchIndices.length === 0) return;
+    const next = (searchMatchIndex + 1) % searchMatchIndices.length;
+    setSearchMatchIndex(next);
+    setSearchScrollTarget(searchMatchIndices[next]);
+  };
 
-  const handleSearchPrev = () =>
-    setSearchMatchIndex(i => (searchMatchIndices.length === 0 ? 0 : (i - 1 + searchMatchIndices.length) % searchMatchIndices.length));
+  const handleSearchPrev = () => {
+    if (searchMatchIndices.length === 0) return;
+    const prev = (searchMatchIndex - 1 + searchMatchIndices.length) % searchMatchIndices.length;
+    setSearchMatchIndex(prev);
+    setSearchScrollTarget(searchMatchIndices[prev]);
+  };
 
   // Handle global search change
   const handleGlobalSearchChange = (value: string) => {
@@ -469,6 +478,7 @@ function App() {
       if (e.key === 'Escape' && showSearchModal) {
         setShowSearchModal(false);
         handleGlobalSearchChange('');
+        setSearchScrollTarget(-1);
       }
     };
 
@@ -555,7 +565,7 @@ function App() {
                   <span>Search</span>
                   <button
                     className="search-popup-close"
-                    onClick={() => { setShowSearchModal(false); handleGlobalSearchChange(''); }}
+                    onClick={() => { setShowSearchModal(false); handleGlobalSearchChange(''); setSearchScrollTarget(-1); }}
                   >
                     ×
                   </button>
@@ -600,7 +610,7 @@ function App() {
                   onFilterChange={handleFilterStateChange}
                   onRowSelect={setSelectedEntry}
                   searchHighlight={activeWorkspace.filterState.globalSearch}
-                  scrollToRowIndex={searchMatchIndices[searchMatchIndex] ?? -1}
+                  scrollToRowIndex={searchScrollTarget}
                 />
               )}
             </div>
