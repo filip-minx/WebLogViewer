@@ -367,6 +367,20 @@ body {
   padding-left: calc(var(--space-md) - 2px);
 }
 
+.log-table .data-row.search-match {
+  background: rgba(234, 179, 8, 0.08);
+  border-left: 2px solid #eab308;
+}
+
+.log-table .data-row.search-match td:first-child {
+  padding-left: calc(var(--space-md) - 2px);
+}
+
+.log-table .data-row.search-match.focused {
+  background: rgba(6, 182, 212, 0.12);
+  border-left: 2px solid var(--info);
+}
+
 .log-table-empty,
 .empty-state {
   display: flex;

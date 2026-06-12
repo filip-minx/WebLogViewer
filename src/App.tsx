@@ -559,6 +559,7 @@ function App() {
                   filterState={activeWorkspace.filterState}
                   onFilterChange={handleFilterStateChange}
                   onRowSelect={setSelectedEntry}
+                  searchHighlight={activeWorkspace.filterState.globalSearch}
                 />
               )}
             </div>

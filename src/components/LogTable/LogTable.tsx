@@ -17,6 +17,18 @@ interface LogTableProps {
   filterState: FilterState;
   onFilterChange: (filterState: FilterState) => void;
   onRowSelect: (entry: ParsedLogEntry) => void;
+  searchHighlight?: string;
+}
+
+function entryMatchesSearch(entry: ParsedLogEntry, search: string): boolean {
+  const term = search.toLowerCase();
+  return [
+    entry.raw,
+    entry.message,
+    entry.source,
+    entry.level,
+    Object.values(entry.fields).join(' '),
+  ].join(' ').toLowerCase().includes(term);
 }
 
 export const LogTable: React.FC<LogTableProps> = ({
@@ -25,6 +37,7 @@ export const LogTable: React.FC<LogTableProps> = ({
   filterState,
   onFilterChange,
   onRowSelect,
+  searchHighlight,
 }) => {
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const tableHeaderRef = useRef<HTMLTableSectionElement>(null);
@@ -222,11 +235,12 @@ export const LogTable: React.FC<LogTableProps> = ({
               {virtualRows.map(virtualRow => {
                 const row = rows[virtualRow.index];
                 const isFocused = virtualRow.index === focusedRowIndex;
+                const isMatch = !!searchHighlight && entryMatchesSearch(row.original, searchHighlight);
                 return (
                   <tr
                     key={row.id}
                     onClick={() => handleRowClick(virtualRow.index, row.original)}
-                    className={`data-row ${isFocused ? 'focused' : ''}`}
+                    className={`data-row${isFocused ? ' focused' : ''}${isMatch ? ' search-match' : ''}`}
                   >
                     {row.getVisibleCells().map(cell => (
                       <td key={cell.id} style={{ width: cell.column.getSize() }}>
