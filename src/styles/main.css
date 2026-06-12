@@ -60,8 +60,8 @@ body {
 
 /* Global scrollbar styling - dark theme */
 *::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 16px;
+  height: 16px;
 }
 
 *::-webkit-scrollbar-track {
@@ -1147,7 +1147,7 @@ body {
 /* Scrollbar Minimap */
 .scrollbar-minimap {
   position: sticky;
-  width: 12px;
+  width: 24px;
   z-index: 50;
   pointer-events: all;
   float: right;
@@ -1172,7 +1172,7 @@ body {
   border-radius: 2px;
   pointer-events: none;
   transition: opacity 0.15s ease;
-  border: 1px solid var(--info);
+  border: 2px solid var(--info);
 }
 
 /* Responsive */

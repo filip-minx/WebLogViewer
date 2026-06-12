@@ -139,7 +139,7 @@ export const ScrollbarMinimap: React.FC<ScrollbarMinimapProps> = ({
     >
       <canvas
         ref={canvasRef}
-        width={12}
+        width={24}
         height={canvasHeight}
         onClick={handleClick}
         style={{ cursor: 'pointer' }}
@@ -149,7 +149,7 @@ export const ScrollbarMinimap: React.FC<ScrollbarMinimapProps> = ({
         style={{
           top: `${viewportRect.top}px`,
           height: `${viewportRect.height}px`,
-          opacity: isHovering ? 0.4 : 0.2,
+          opacity: isHovering ? 0.7 : 0.45,
         }}
       />
     </div>
