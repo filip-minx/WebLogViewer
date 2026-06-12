@@ -408,9 +408,17 @@ function App() {
     }, []);
   }, [filteredEntries, activeWorkspace?.filterState.globalSearch]);
 
-  // Reset to first match when search term changes
+  // When search term changes, start from the first match after the currently selected row
   useEffect(() => {
-    setSearchMatchIndex(0);
+    if (searchMatchIndices.length === 0) {
+      setSearchMatchIndex(0);
+      return;
+    }
+    const selectedIndex = selectedEntry
+      ? filteredEntries.findIndex(e => e.rowId === selectedEntry.rowId)
+      : -1;
+    const firstAfter = searchMatchIndices.findIndex(mi => mi > selectedIndex);
+    setSearchMatchIndex(firstAfter === -1 ? 0 : firstAfter);
   }, [activeWorkspace?.filterState.globalSearch]);
 
   const handleSearchNext = () =>
