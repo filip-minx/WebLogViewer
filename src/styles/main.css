@@ -60,6 +60,11 @@ body {
 
 /* Global scrollbar styling - dark theme */
 *::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.log-table-container::-webkit-scrollbar {
   width: 16px;
   height: 16px;
 }
@@ -275,7 +280,7 @@ body {
   font-size: 12px;
   font-family: var(--font-mono);
   letter-spacing: -0.01em;
-  width: calc(100% - 14px);
+  width: calc(100% - 26px);
   table-layout: auto;
 }
 
