@@ -12,6 +12,7 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ value, onChange }) =
       <input
         id="global-search-input"
         type="text"
+        autoFocus
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder="Search across all fields..."

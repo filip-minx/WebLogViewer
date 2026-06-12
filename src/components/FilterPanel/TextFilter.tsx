@@ -19,6 +19,7 @@ export const TextFilter: React.FC<TextFilterProps> = ({
       <input
         id={`filter-${columnId}`}
         type="text"
+        autoFocus
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={`Filter ${label.toLowerCase()}...`}
