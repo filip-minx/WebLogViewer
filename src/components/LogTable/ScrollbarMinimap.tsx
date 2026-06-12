@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { ParsedLogEntry } from '../../models/types';
+import { entryMatchesSearch } from '../../utils/filterUtils';
 
 interface ScrollbarMinimapProps {
   entries: ParsedLogEntry[];
@@ -7,6 +8,7 @@ interface ScrollbarMinimapProps {
   totalHeight: number;
   headerHeight: number;
   onScrollToPosition: (position: number) => void;
+  searchHighlight?: string;
 }
 
 export const ScrollbarMinimap: React.FC<ScrollbarMinimapProps> = ({
@@ -15,6 +17,7 @@ export const ScrollbarMinimap: React.FC<ScrollbarMinimapProps> = ({
   totalHeight,
   headerHeight,
   onScrollToPosition,
+  searchHighlight,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -78,35 +81,40 @@ export const ScrollbarMinimap: React.FC<ScrollbarMinimapProps> = ({
     const width = canvas.width;
     const height = canvas.height;
 
-    // Clear canvas
     ctx.clearRect(0, 0, width, height);
 
-    // Calculate pixel height per entry
     const pixelsPerEntry = height / entries.length;
     const entryHeight = Math.max(pixelsPerEntry, 1);
 
-    // Draw entries
+    // First pass: errors and warnings only
     entries.forEach((entry, index) => {
       const y = index * pixelsPerEntry;
       const level = entry.level?.toLowerCase();
 
-      // Color based on log level
-      let color = 'rgba(255, 255, 255, 0.15)'; // default
-
+      let color: string | null = null;
       if (level === 'error') {
         color = '#ff2222';
       } else if (level === 'warn' || level === 'warning') {
         color = '#ffaa00';
-      } else if (level === 'info') {
-        color = '#06b6d4';
-      } else if (level === 'debug' || level === 'trace') {
-        color = 'rgba(255, 255, 255, 0.08)';
       }
 
-      ctx.fillStyle = color;
-      ctx.fillRect(0, y, width, Math.ceil(entryHeight));
+      if (color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(0, y, width, Math.ceil(entryHeight));
+      }
     });
-  }, [entries, canvasHeight]);
+
+    // Second pass: search matches on top
+    if (searchHighlight) {
+      ctx.fillStyle = '#06b6d4';
+      entries.forEach((entry, index) => {
+        if (entryMatchesSearch(entry, searchHighlight)) {
+          const y = index * pixelsPerEntry;
+          ctx.fillRect(0, y, width, Math.ceil(entryHeight));
+        }
+      });
+    }
+  }, [entries, canvasHeight, searchHighlight]);
 
 
   // Handle click to scroll

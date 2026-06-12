@@ -184,6 +184,7 @@ export const LogTable: React.FC<LogTableProps> = ({
         totalHeight={totalSize}
         headerHeight={headerHeight}
         onScrollToPosition={handleScrollToPosition}
+        searchHighlight={searchHighlight}
       />
       <table className="log-table">
         <thead ref={tableHeaderRef}>
