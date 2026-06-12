@@ -450,11 +450,17 @@ function App() {
       if ((e.ctrlKey || e.metaKey) && e.key === 'f' &&
           activeWorkspace?.parsedEntries.length && !isRawDisplay) {
         e.preventDefault();
-        setShowSearchModal(true);
+        if (showSearchModal) {
+          const input = document.getElementById('global-search-input') as HTMLInputElement | null;
+          input?.select();
+        } else {
+          setShowSearchModal(true);
+        }
       }
       // Escape to close search
       if (e.key === 'Escape' && showSearchModal) {
         setShowSearchModal(false);
+        handleGlobalSearchChange('');
       }
     };
 
@@ -541,7 +547,7 @@ function App() {
                   <span>Search</span>
                   <button
                     className="search-popup-close"
-                    onClick={() => setShowSearchModal(false)}
+                    onClick={() => { setShowSearchModal(false); handleGlobalSearchChange(''); }}
                   >
                     ×
                   </button>
