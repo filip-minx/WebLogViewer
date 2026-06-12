@@ -10,6 +10,7 @@ import type { ParsedLogEntry, ColumnDef, FilterState } from '../../models/types'
 import { createTableColumns } from './columnUtils';
 import { ColumnFilterPopup } from '../ColumnFilterPopup/ColumnFilterPopup';
 import { ScrollbarMinimap } from './ScrollbarMinimap';
+import { entryMatchesSearch } from '../../utils/filterUtils';
 
 interface LogTableProps {
   entries: ParsedLogEntry[];
@@ -18,17 +19,7 @@ interface LogTableProps {
   onFilterChange: (filterState: FilterState) => void;
   onRowSelect: (entry: ParsedLogEntry) => void;
   searchHighlight?: string;
-}
-
-function entryMatchesSearch(entry: ParsedLogEntry, search: string): boolean {
-  const term = search.toLowerCase();
-  return [
-    entry.raw,
-    entry.message,
-    entry.source,
-    entry.level,
-    Object.values(entry.fields).join(' '),
-  ].join(' ').toLowerCase().includes(term);
+  scrollToRowIndex?: number;
 }
 
 export const LogTable: React.FC<LogTableProps> = ({
@@ -38,6 +29,7 @@ export const LogTable: React.FC<LogTableProps> = ({
   onFilterChange,
   onRowSelect,
   searchHighlight,
+  scrollToRowIndex,
 }) => {
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const tableHeaderRef = useRef<HTMLTableSectionElement>(null);
@@ -129,6 +121,15 @@ export const LogTable: React.FC<LogTableProps> = ({
       onRowSelect(rows[0].original);
     }
   }, [rows, focusedRowIndex, onRowSelect]);
+
+  // Scroll to and focus a row when driven externally (search nav)
+  React.useEffect(() => {
+    if (scrollToRowIndex == null || scrollToRowIndex < 0 || rows.length === 0) return;
+    const clamped = Math.min(scrollToRowIndex, rows.length - 1);
+    setFocusedRowIndex(clamped);
+    rowVirtualizer.scrollToIndex(clamped, { align: 'center' });
+    onRowSelect(rows[clamped].original);
+  }, [scrollToRowIndex]);
 
   const handleRowClick = (index: number, entry: ParsedLogEntry) => {
     setFocusedRowIndex(index);

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { WorkspaceList } from './components/WorkspaceList/WorkspaceList';
 import { FileTree } from './components/FileTree/FileTree';
@@ -10,7 +10,7 @@ import { StatusBar } from './components/StatusBar/StatusBar';
 import { ZipService } from './services/zipService';
 import { ParseService } from './services/parseService';
 import { FilePickerService } from './services/filePickerService';
-import { applyFilters } from './utils/filterUtils';
+import { applyFilters, entryMatchesSearch } from './utils/filterUtils';
 import { useResizable } from './hooks/useResizable';
 import { useWorkspaceManager } from './hooks/useWorkspaceManager';
 import type {
@@ -70,6 +70,7 @@ function App() {
   // UI state
   const [selectedEntry, setSelectedEntry] = useState<ParsedLogEntry | null>(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
+  const [searchMatchIndex, setSearchMatchIndex] = useState(0);
 
   const dragCounter = useRef(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -397,6 +398,27 @@ function App() {
     setFilteredEntries(filtered);
   }, [activeWorkspace]);
 
+  // Indices into filteredEntries that match the current search term
+  const searchMatchIndices = useMemo(() => {
+    const term = activeWorkspace?.filterState.globalSearch;
+    if (!term) return [];
+    return filteredEntries.reduce<number[]>((acc, entry, i) => {
+      if (entryMatchesSearch(entry, term)) acc.push(i);
+      return acc;
+    }, []);
+  }, [filteredEntries, activeWorkspace?.filterState.globalSearch]);
+
+  // Reset to first match when search term changes
+  useEffect(() => {
+    setSearchMatchIndex(0);
+  }, [activeWorkspace?.filterState.globalSearch]);
+
+  const handleSearchNext = () =>
+    setSearchMatchIndex(i => (searchMatchIndices.length === 0 ? 0 : (i + 1) % searchMatchIndices.length));
+
+  const handleSearchPrev = () =>
+    setSearchMatchIndex(i => (searchMatchIndices.length === 0 ? 0 : (i - 1 + searchMatchIndices.length) % searchMatchIndices.length));
+
   // Handle global search change
   const handleGlobalSearchChange = (value: string) => {
     if (!activeWorkspace) return;
@@ -528,6 +550,10 @@ function App() {
                   <GlobalSearch
                     value={activeWorkspace.filterState.globalSearch}
                     onChange={handleGlobalSearchChange}
+                    matchCount={searchMatchIndices.length}
+                    matchIndex={searchMatchIndex}
+                    onPrev={handleSearchPrev}
+                    onNext={handleSearchNext}
                   />
                 </div>
               </div>
@@ -560,6 +586,7 @@ function App() {
                   onFilterChange={handleFilterStateChange}
                   onRowSelect={setSelectedEntry}
                   searchHighlight={activeWorkspace.filterState.globalSearch}
+                  scrollToRowIndex={searchMatchIndices[searchMatchIndex] ?? -1}
                 />
               )}
             </div>

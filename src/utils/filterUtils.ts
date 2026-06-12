@@ -73,6 +73,17 @@ function getColumnValue(entry: ParsedLogEntry, columnId: string): any {
   return null;
 }
 
+export function entryMatchesSearch(entry: ParsedLogEntry, search: string): boolean {
+  const term = search.toLowerCase();
+  return [
+    entry.raw,
+    entry.message,
+    entry.source,
+    entry.level,
+    Object.values(entry.fields).join(' '),
+  ].join(' ').toLowerCase().includes(term);
+}
+
 export function getUniqueEnumValues(
   entries: ParsedLogEntry[],
   columnId: string
