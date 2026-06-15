@@ -64,6 +64,11 @@ body {
   height: 8px;
 }
 
+.log-table-container::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+
 *::-webkit-scrollbar-track {
   background: rgba(0, 0, 0, 0.2);
 }
@@ -275,7 +280,7 @@ body {
   font-size: 12px;
   font-family: var(--font-mono);
   letter-spacing: -0.01em;
-  width: calc(100% - 14px);
+  width: calc(100% - 26px);
   table-layout: auto;
 }
 
@@ -365,6 +370,20 @@ body {
 
 .log-table .data-row.focused td:first-child {
   padding-left: calc(var(--space-md) - 2px);
+}
+
+.log-table .data-row.search-match {
+  background: rgba(234, 179, 8, 0.08);
+  border-left: 2px solid #eab308;
+}
+
+.log-table .data-row.search-match td:first-child {
+  padding-left: calc(var(--space-md) - 2px);
+}
+
+.log-table .data-row.search-match.focused {
+  background: rgba(6, 182, 212, 0.12);
+  border-left: 2px solid var(--info);
 }
 
 .log-table-empty,
@@ -1088,10 +1107,52 @@ body {
   box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
 }
 
+.search-popup-content .global-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.search-popup-content .global-search input {
+  flex: 1;
+  min-width: 0;
+}
+
+.search-counter {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  min-width: 56px;
+  text-align: right;
+}
+
+.search-nav-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-standard);
+  border-radius: 3px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  padding: 3px 6px;
+  transition: all 0.12s ease;
+}
+
+.search-nav-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
+}
+
+.search-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
 /* Scrollbar Minimap */
 .scrollbar-minimap {
   position: sticky;
-  width: 12px;
+  width: 24px;
   z-index: 50;
   pointer-events: all;
   float: right;
@@ -1116,7 +1177,7 @@ body {
   border-radius: 2px;
   pointer-events: none;
   transition: opacity 0.15s ease;
-  border: 1px solid var(--info);
+  border: 2px solid var(--info);
 }
 
 /* Responsive */

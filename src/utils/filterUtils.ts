@@ -9,22 +9,6 @@ export function applyFilters(
 ): ParsedLogEntry[] {
   let filtered = entries;
 
-  // Apply global search
-  if (filterState.globalSearch) {
-    const search = filterState.globalSearch.toLowerCase();
-    filtered = filtered.filter(entry => {
-      const searchableText = [
-        entry.raw,
-        entry.message,
-        entry.source,
-        entry.level,
-        Object.values(entry.fields).join(' ')
-      ].join(' ').toLowerCase();
-
-      return searchableText.includes(search);
-    });
-  }
-
   // Apply column filters
   for (const [columnId, filterValue] of Object.entries(filterState.columnFilters)) {
     if (!filterValue) continue;
@@ -87,6 +71,17 @@ function getColumnValue(entry: ParsedLogEntry, columnId: string): any {
   }
 
   return null;
+}
+
+export function entryMatchesSearch(entry: ParsedLogEntry, search: string): boolean {
+  const term = search.toLowerCase();
+  return [
+    entry.raw,
+    entry.message,
+    entry.source,
+    entry.level,
+    Object.values(entry.fields).join(' '),
+  ].join(' ').toLowerCase().includes(term);
 }
 
 export function getUniqueEnumValues(
