@@ -916,6 +916,35 @@ body {
   margin-left: auto;
 }
 
+.status-section--autoscroll {
+  margin-left: auto;
+}
+
+.status-section--warning + .status-section--autoscroll {
+  margin-left: 0;
+}
+
+.autoscroll-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 8px;
+  opacity: 0.6;
+}
+
+.autoscroll-btn:hover {
+  opacity: 1;
+}
+
+.autoscroll-btn--on {
+  border-color: var(--info);
+  color: var(--info);
+  opacity: 1;
+}
+
 .status-warning {
   color: var(--warning);
   font-size: 11px;

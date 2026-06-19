@@ -14,31 +14,28 @@ import { entryMatchesSearch } from '../../utils/filterUtils';
 
 interface LogTableProps {
   entries: ParsedLogEntry[];
-  totalEntryCount: number;
   columns: ColumnDef[];
   filterState: FilterState;
   onFilterChange: (filterState: FilterState) => void;
   onRowSelect: (entry: ParsedLogEntry) => void;
   searchHighlight?: string;
   scrollToRowIndex?: number;
+  autoScroll?: boolean;
 }
 
-const BOTTOM_THRESHOLD = 60; // px from bottom counts as "at bottom"
 
 export const LogTable: React.FC<LogTableProps> = ({
   entries,
-  totalEntryCount,
   columns,
   filterState,
   onFilterChange,
   onRowSelect,
   searchHighlight,
   scrollToRowIndex,
+  autoScroll = false,
 }) => {
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const tableHeaderRef = useRef<HTMLTableSectionElement>(null);
-  const isAtBottomRef = useRef<boolean>(false);
-  const prevEntriesLengthRef = useRef<number>(0);
   const [focusedRowIndex, setFocusedRowIndex] = useState<number>(-1);
   const [headerHeight, setHeaderHeight] = useState<number>(0);
   const [filterPopup, setFilterPopup] = useState<{
@@ -128,47 +125,14 @@ export const LogTable: React.FC<LogTableProps> = ({
     }
   }, [rows, focusedRowIndex, onRowSelect]);
 
-  const pendingScrollToBottom = useRef<boolean>(false);
-
-  // Auto-scroll to newest row on refresh when user is already at the bottom.
-  // Uses totalEntryCount (raw unfiltered count) as the signal — NOT rows.length, which
-  // also changes on filter changes and would cause false triggers.
-  // Skips totalEntryCount=0: directory workspaces briefly clear parsedEntries before
-  // re-parsing, which would reset prevEntriesLengthRef and break the "was this a refresh"
-  // detection. We preserve the old count across that transient empty state.
+  // Auto-scroll: when enabled, always follow the newest (last) row
   React.useEffect(() => {
-    const newCount = totalEntryCount;
-    if (newCount === 0) return; // transient empty state during re-parse — skip
-
-    const oldCount = prevEntriesLengthRef.current;
-    prevEntriesLengthRef.current = newCount;
-
-    const el = tableContainerRef.current;
-    const effectivelyAtBottom = isAtBottomRef.current || (!!el && el.scrollHeight <= el.clientHeight);
-
-    // oldCount > 0 skips initial load. Fires on a real file refresh.
-    if (newCount > oldCount && oldCount > 0 && effectivelyAtBottom) {
-      if (rows.length > 0) {
-        const lastIndex = rows.length - 1;
-        rowVirtualizer.scrollToIndex(lastIndex, { align: 'end' });
-        setFocusedRowIndex(lastIndex);
-        onRowSelect(rows[lastIndex].original);
-      } else {
-        // filteredEntries not yet updated (separate render cycle); defer until rows arrive
-        pendingScrollToBottom.current = true;
-      }
-    }
-  }, [totalEntryCount]);
-
-  // Execute deferred scroll-to-bottom once rows become available after re-parse
-  React.useEffect(() => {
-    if (!pendingScrollToBottom.current || rows.length === 0) return;
-    pendingScrollToBottom.current = false;
+    if (!autoScroll || rows.length === 0) return;
     const lastIndex = rows.length - 1;
     rowVirtualizer.scrollToIndex(lastIndex, { align: 'end' });
     setFocusedRowIndex(lastIndex);
     onRowSelect(rows[lastIndex].original);
-  }, [rows.length]);
+  }, [autoScroll, rows.length]);
 
   // Scroll to and focus a row when driven externally (search nav)
   React.useEffect(() => {
@@ -222,19 +186,6 @@ export const LogTable: React.FC<LogTableProps> = ({
     }
   };
 
-  // Track scroll position to determine if we're at the bottom
-  React.useEffect(() => {
-    const el = tableContainerRef.current;
-    if (!el) return;
-
-    const onScroll = () => {
-      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-      isAtBottomRef.current = distanceFromBottom <= BOTTOM_THRESHOLD;
-    };
-
-    el.addEventListener('scroll', onScroll, { passive: true });
-    return () => el.removeEventListener('scroll', onScroll);
-  }, []); // mounts once; tableContainerRef.current is stable
 
   const hasNoEntries = entries.length === 0;
 

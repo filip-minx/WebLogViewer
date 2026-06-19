@@ -72,6 +72,7 @@ function App() {
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [searchMatchIndex, setSearchMatchIndex] = useState(0);
   const [searchScrollTarget, setSearchScrollTarget] = useState(-1);
+  const [autoScroll, setAutoScroll] = useState(false);
 
   const dragCounter = useRef(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -605,13 +606,13 @@ function App() {
               ) : (
                 <LogTable
                   entries={filteredEntries}
-                  totalEntryCount={activeWorkspace.parsedEntries.length}
                   columns={activeWorkspace.columns}
                   filterState={activeWorkspace.filterState}
                   onFilterChange={handleFilterStateChange}
                   onRowSelect={setSelectedEntry}
                   searchHighlight={activeWorkspace.filterState.globalSearch}
                   scrollToRowIndex={searchScrollTarget}
+                  autoScroll={autoScroll}
                 />
               )}
             </div>
@@ -638,6 +639,8 @@ function App() {
             totalEntries={activeWorkspace?.parsedEntries.length || 0}
             filteredEntries={filteredEntries.length}
             isAdmin={isAdmin}
+            autoScroll={autoScroll}
+            onAutoScrollToggle={() => setAutoScroll(v => !v)}
           />
         </footer>
 

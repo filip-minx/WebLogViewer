@@ -6,6 +6,8 @@ interface StatusBarProps {
   totalEntries: number;
   filteredEntries: number;
   isAdmin: boolean | null;
+  autoScroll: boolean;
+  onAutoScrollToggle: () => void;
 }
 
 export const StatusBar: React.FC<StatusBarProps> = ({
@@ -13,6 +15,8 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   totalEntries,
   filteredEntries,
   isAdmin,
+  autoScroll,
+  onAutoScrollToggle,
 }) => {
   return (
     <div className="status-bar">
@@ -65,6 +69,16 @@ export const StatusBar: React.FC<StatusBarProps> = ({
           <span className="status-warning">⚠ Not running as administrator — some files may not be visible.</span>
         </div>
       )}
+
+      <div className="status-section status-section--autoscroll">
+        <button
+          className={`autoscroll-btn${autoScroll ? ' autoscroll-btn--on' : ''}`}
+          onClick={onAutoScrollToggle}
+          title="Auto-scroll to newest log line on refresh"
+        >
+          {autoScroll ? '⏬ Auto-scroll ON' : '⏬ Auto-scroll OFF'}
+        </button>
+      </div>
 
     </div>
   );
