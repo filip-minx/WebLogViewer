@@ -141,7 +141,9 @@ export const LogTable: React.FC<LogTableProps> = ({
     const el = tableContainerRef.current;
     const effectivelyAtBottom = isAtBottomRef.current || (!!el && el.scrollHeight <= el.clientHeight);
 
-    // Only act when entries were added (a real file refresh), not on initial load
+    // Only act when entries were added (a real file refresh), not on initial load.
+    // oldCount > 0 also handles file switches: App.tsx clears parsedEntries to []
+    // before loading the new file, which resets prevEntriesLengthRef to 0 first.
     if (newCount > oldCount && oldCount > 0 && effectivelyAtBottom) {
       // Scroll to last *visible* (filtered) row
       if (rows.length > 0) {
