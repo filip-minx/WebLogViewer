@@ -145,9 +145,12 @@ export const LogTable: React.FC<LogTableProps> = ({
     // oldCount > 0 also handles file switches: App.tsx clears parsedEntries to []
     // before loading the new file, which resets prevEntriesLengthRef to 0 first.
     if (newCount > oldCount && oldCount > 0 && effectivelyAtBottom) {
-      // Scroll to last *visible* (filtered) row
+      // Scroll to and focus the last *visible* (filtered) row
       if (rows.length > 0) {
-        rowVirtualizer.scrollToIndex(rows.length - 1, { align: 'end' });
+        const lastIndex = rows.length - 1;
+        rowVirtualizer.scrollToIndex(lastIndex, { align: 'end' });
+        setFocusedRowIndex(lastIndex);
+        onRowSelect(rows[lastIndex].original);
       }
     }
   }, [totalEntryCount, rows.length]);

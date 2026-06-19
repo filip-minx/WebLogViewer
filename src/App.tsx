@@ -585,7 +585,7 @@ function App() {
 
             <div className="table-area">
               {!activeWorkspace || (activeWorkspace.parsedEntries.length === 0 &&
-               activeWorkspace.parseState?.status !== 'parsing') ? (
+               activeWorkspace.status !== 'parsing') ? (
                 <div className="empty-state">
                   <p>
                     {!activeWorkspace
