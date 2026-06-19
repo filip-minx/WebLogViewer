@@ -36,6 +36,7 @@ export const LogTable: React.FC<LogTableProps> = ({
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const tableHeaderRef = useRef<HTMLTableSectionElement>(null);
   const isAtBottomRef = useRef<boolean>(false);
+  const prevEntriesLengthRef = useRef<number>(0);
   const [focusedRowIndex, setFocusedRowIndex] = useState<number>(-1);
   const [headerHeight, setHeaderHeight] = useState<number>(0);
   const [filterPopup, setFilterPopup] = useState<{
@@ -124,6 +125,26 @@ export const LogTable: React.FC<LogTableProps> = ({
       onRowSelect(rows[0].original);
     }
   }, [rows, focusedRowIndex, onRowSelect]);
+
+  // Auto-scroll to newest row on refresh when user is already at the bottom.
+  // Key: use entries.length (the raw unfiltered prop) as the change signal, NOT rows.length.
+  // rows.length changes on filter changes too — e.g. clearing a filter would look like a
+  // refresh and incorrectly trigger auto-scroll.
+  React.useEffect(() => {
+    const newCount = entries.length;
+    const oldCount = prevEntriesLengthRef.current;
+    prevEntriesLengthRef.current = newCount;
+
+    // Check if effectively at bottom (including case where no scrollbar exists)
+    const el = tableContainerRef.current;
+    const effectivelyAtBottom = isAtBottomRef.current || (!!el && el.scrollHeight <= el.clientHeight);
+
+    // Only act when entries were added (a real file refresh), not on initial load
+    if (newCount > oldCount && oldCount > 0 && effectivelyAtBottom) {
+      // Scroll to last *visible* (filtered) row
+      rowVirtualizer.scrollToIndex(rows.length - 1, { align: 'end' });
+    }
+  }, [entries.length, rows.length, rowVirtualizer]);
 
   // Scroll to and focus a row when driven externally (search nav)
   React.useEffect(() => {
