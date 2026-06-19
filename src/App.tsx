@@ -605,6 +605,7 @@ function App() {
               ) : (
                 <LogTable
                   entries={filteredEntries}
+                  totalEntryCount={activeWorkspace.parsedEntries.length}
                   columns={activeWorkspace.columns}
                   filterState={activeWorkspace.filterState}
                   onFilterChange={handleFilterStateChange}
