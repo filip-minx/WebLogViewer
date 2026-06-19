@@ -33,6 +33,8 @@ export const LogTable: React.FC<LogTableProps> = ({
 }) => {
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const tableHeaderRef = useRef<HTMLTableSectionElement>(null);
+  const isAtBottomRef = useRef<boolean>(false);
+  const BOTTOM_THRESHOLD = 60; // px from bottom counts as "at bottom"
   const [focusedRowIndex, setFocusedRowIndex] = useState<number>(-1);
   const [headerHeight, setHeaderHeight] = useState<number>(0);
   const [filterPopup, setFilterPopup] = useState<{
@@ -173,6 +175,20 @@ export const LogTable: React.FC<LogTableProps> = ({
       tableContainerRef.current.scrollTop = position;
     }
   };
+
+  // Track scroll position to determine if we're at the bottom
+  React.useEffect(() => {
+    const el = tableContainerRef.current;
+    if (!el) return;
+
+    const onScroll = () => {
+      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      isAtBottomRef.current = distanceFromBottom <= BOTTOM_THRESHOLD;
+    };
+
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []); // mounts once; tableContainerRef.current is stable
 
   const hasNoEntries = entries.length === 0;
 
