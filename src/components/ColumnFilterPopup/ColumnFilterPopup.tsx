@@ -21,7 +21,7 @@ export const ColumnFilterPopup: React.FC<ColumnFilterPopupProps> = ({
 }) => {
   const popupRef = useRef<HTMLDivElement>(null);
 
-  // Close on click outside
+  // Close on click outside or Escape
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -33,8 +33,16 @@ export const ColumnFilterPopup: React.FC<ColumnFilterPopupProps> = ({
       }
     };
 
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, [onClose, anchorElement]);
 
   // Position popup below the column header

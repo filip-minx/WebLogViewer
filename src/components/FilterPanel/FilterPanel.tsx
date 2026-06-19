@@ -59,7 +59,14 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
         )}
       </div>
 
-      <GlobalSearch value={filterState.globalSearch} onChange={handleGlobalSearchChange} />
+      <GlobalSearch
+        value={filterState.globalSearch}
+        onChange={handleGlobalSearchChange}
+        matchCount={0}
+        matchIndex={0}
+        onPrev={() => {}}
+        onNext={() => {}}
+      />
 
       <div className="column-filters">
         {columns

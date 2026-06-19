@@ -10,6 +10,7 @@ import type { ParsedLogEntry, ColumnDef, FilterState } from '../../models/types'
 import { createTableColumns } from './columnUtils';
 import { ColumnFilterPopup } from '../ColumnFilterPopup/ColumnFilterPopup';
 import { ScrollbarMinimap } from './ScrollbarMinimap';
+import { entryMatchesSearch } from '../../utils/filterUtils';
 
 interface LogTableProps {
   entries: ParsedLogEntry[];
@@ -17,6 +18,8 @@ interface LogTableProps {
   filterState: FilterState;
   onFilterChange: (filterState: FilterState) => void;
   onRowSelect: (entry: ParsedLogEntry) => void;
+  searchHighlight?: string;
+  scrollToRowIndex?: number;
 }
 
 export const LogTable: React.FC<LogTableProps> = ({
@@ -25,6 +28,8 @@ export const LogTable: React.FC<LogTableProps> = ({
   filterState,
   onFilterChange,
   onRowSelect,
+  searchHighlight,
+  scrollToRowIndex,
 }) => {
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const tableHeaderRef = useRef<HTMLTableSectionElement>(null);
@@ -117,6 +122,15 @@ export const LogTable: React.FC<LogTableProps> = ({
     }
   }, [rows, focusedRowIndex, onRowSelect]);
 
+  // Scroll to and focus a row when driven externally (search nav)
+  React.useEffect(() => {
+    if (scrollToRowIndex == null || scrollToRowIndex < 0 || rows.length === 0) return;
+    const clamped = Math.min(scrollToRowIndex, rows.length - 1);
+    setFocusedRowIndex(clamped);
+    rowVirtualizer.scrollToIndex(clamped, { align: 'center' });
+    onRowSelect(rows[clamped].original);
+  }, [scrollToRowIndex]);
+
   const handleRowClick = (index: number, entry: ParsedLogEntry) => {
     setFocusedRowIndex(index);
     onRowSelect(entry);
@@ -170,6 +184,7 @@ export const LogTable: React.FC<LogTableProps> = ({
         totalHeight={totalSize}
         headerHeight={headerHeight}
         onScrollToPosition={handleScrollToPosition}
+        searchHighlight={searchHighlight}
       />
       <table className="log-table">
         <thead ref={tableHeaderRef}>
@@ -222,11 +237,12 @@ export const LogTable: React.FC<LogTableProps> = ({
               {virtualRows.map(virtualRow => {
                 const row = rows[virtualRow.index];
                 const isFocused = virtualRow.index === focusedRowIndex;
+                const isMatch = !!searchHighlight && entryMatchesSearch(row.original, searchHighlight);
                 return (
                   <tr
                     key={row.id}
                     onClick={() => handleRowClick(virtualRow.index, row.original)}
-                    className={`data-row ${isFocused ? 'focused' : ''}`}
+                    className={`data-row${isFocused ? ' focused' : ''}${isMatch ? ' search-match' : ''}`}
                   >
                     {row.getVisibleCells().map(cell => (
                       <td key={cell.id} style={{ width: cell.column.getSize() }}>

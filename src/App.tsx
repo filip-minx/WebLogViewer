@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { WorkspaceList } from './components/WorkspaceList/WorkspaceList';
 import { FileTree } from './components/FileTree/FileTree';
@@ -10,7 +10,7 @@ import { StatusBar } from './components/StatusBar/StatusBar';
 import { ZipService } from './services/zipService';
 import { ParseService } from './services/parseService';
 import { FilePickerService } from './services/filePickerService';
-import { applyFilters } from './utils/filterUtils';
+import { applyFilters, entryMatchesSearch } from './utils/filterUtils';
 import { useResizable } from './hooks/useResizable';
 import { useWorkspaceManager } from './hooks/useWorkspaceManager';
 import type {
@@ -70,6 +70,8 @@ function App() {
   // UI state
   const [selectedEntry, setSelectedEntry] = useState<ParsedLogEntry | null>(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
+  const [searchMatchIndex, setSearchMatchIndex] = useState(0);
+  const [searchScrollTarget, setSearchScrollTarget] = useState(-1);
 
   const dragCounter = useRef(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -397,6 +399,43 @@ function App() {
     setFilteredEntries(filtered);
   }, [activeWorkspace]);
 
+  // Indices into filteredEntries that match the current search term
+  const searchMatchIndices = useMemo(() => {
+    const term = activeWorkspace?.filterState.globalSearch;
+    if (!term) return [];
+    return filteredEntries.reduce<number[]>((acc, entry, i) => {
+      if (entryMatchesSearch(entry, term)) acc.push(i);
+      return acc;
+    }, []);
+  }, [filteredEntries, activeWorkspace?.filterState.globalSearch]);
+
+  // When search term changes, compute the starting index (no scroll yet)
+  useEffect(() => {
+    if (searchMatchIndices.length === 0) {
+      setSearchMatchIndex(0);
+      return;
+    }
+    const selectedIndex = selectedEntry
+      ? filteredEntries.findIndex(e => e.rowId === selectedEntry.rowId)
+      : -1;
+    const firstAfter = searchMatchIndices.findIndex(mi => mi > selectedIndex);
+    setSearchMatchIndex(firstAfter === -1 ? 0 : firstAfter);
+  }, [activeWorkspace?.filterState.globalSearch]);
+
+  const handleSearchNext = () => {
+    if (searchMatchIndices.length === 0) return;
+    const next = (searchMatchIndex + 1) % searchMatchIndices.length;
+    setSearchMatchIndex(next);
+    setSearchScrollTarget(searchMatchIndices[next]);
+  };
+
+  const handleSearchPrev = () => {
+    if (searchMatchIndices.length === 0) return;
+    const prev = (searchMatchIndex - 1 + searchMatchIndices.length) % searchMatchIndices.length;
+    setSearchMatchIndex(prev);
+    setSearchScrollTarget(searchMatchIndices[prev]);
+  };
+
   // Handle global search change
   const handleGlobalSearchChange = (value: string) => {
     if (!activeWorkspace) return;
@@ -428,11 +467,18 @@ function App() {
       if ((e.ctrlKey || e.metaKey) && e.key === 'f' &&
           activeWorkspace?.parsedEntries.length && !isRawDisplay) {
         e.preventDefault();
-        setShowSearchModal(true);
+        if (showSearchModal) {
+          const input = document.getElementById('global-search-input') as HTMLInputElement | null;
+          input?.select();
+        } else {
+          setShowSearchModal(true);
+        }
       }
       // Escape to close search
       if (e.key === 'Escape' && showSearchModal) {
         setShowSearchModal(false);
+        handleGlobalSearchChange('');
+        setSearchScrollTarget(-1);
       }
     };
 
@@ -519,7 +565,7 @@ function App() {
                   <span>Search</span>
                   <button
                     className="search-popup-close"
-                    onClick={() => setShowSearchModal(false)}
+                    onClick={() => { setShowSearchModal(false); handleGlobalSearchChange(''); setSearchScrollTarget(-1); }}
                   >
                     ×
                   </button>
@@ -528,6 +574,10 @@ function App() {
                   <GlobalSearch
                     value={activeWorkspace.filterState.globalSearch}
                     onChange={handleGlobalSearchChange}
+                    matchCount={searchMatchIndices.length}
+                    matchIndex={searchMatchIndex}
+                    onPrev={handleSearchPrev}
+                    onNext={handleSearchNext}
                   />
                 </div>
               </div>
@@ -559,6 +609,8 @@ function App() {
                   filterState={activeWorkspace.filterState}
                   onFilterChange={handleFilterStateChange}
                   onRowSelect={setSelectedEntry}
+                  searchHighlight={activeWorkspace.filterState.globalSearch}
+                  scrollToRowIndex={searchScrollTarget}
                 />
               )}
             </div>
