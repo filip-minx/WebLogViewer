@@ -158,8 +158,8 @@ function App() {
         const source = await FilePickerService.openNativePath(changedPath);
         if (source) await handleWorkspaceOpenRef.current(source);
       } else if (ws.source.type === 'directory' && ws.selectedFilePaths.length > 0) {
-        // Re-parse the currently selected files
-        await handleTreeFileSelectRef.current(ws.selectedFilePaths);
+        // Silent re-parse: no parsedEntries:[] clear, so scroll position is preserved
+        await silentReparseDirectoryRef.current(ws);
       }
     });
   }, []);
@@ -363,6 +363,67 @@ function App() {
 
   const handleTreeFileSelectRef = useRef(handleTreeFileSelect);
   useEffect(() => { handleTreeFileSelectRef.current = handleTreeFileSelect; });
+
+  // Re-parse currently selected files without clearing entries first, so the
+  // virtual list keeps its height and scroll position during live reload.
+  const silentReparseDirectory = async (ws: typeof workspaces[number]) => {
+    const paths = ws.selectedFilePaths;
+    const source = ws.source;
+    if (paths.length === 0) return;
+    if (source.type !== 'directory') return;
+
+    try {
+      const allParsedFiles: Array<{ path: string; entries: ParsedLogEntry[]; columns: ColumnDef[] }> = [];
+
+      for (const path of paths) {
+        let content: string;
+        if (source.dirHandle || source.nativePath) {
+          content = await FilePickerService.readFileFromDirectory(source.dirHandle ?? undefined, source.nativePath, path);
+        } else {
+          return;
+        }
+
+        let fileEntries: ParsedLogEntry[] = [];
+        let fileColumns: ColumnDef[] = [];
+
+        await parseService.parseFile(content, path, progress => {
+          if (progress.parserId && progress.parserName && progress.columns) {
+            fileColumns = progress.columns;
+          }
+          fileEntries = progress.entries;
+        });
+
+        allParsedFiles.push({
+          path,
+          entries: fileEntries.map(entry => ({ ...entry, fields: { ...entry.fields, _sourceFile: path } })),
+          columns: fileColumns,
+        });
+      }
+
+      const mergedEntries = mergeLogEntries(allParsedFiles);
+      const baseColumns = allParsedFiles[0]?.columns || [];
+      const columnsWithSource: ColumnDef[] = paths.length > 1
+        ? [...baseColumns, { id: 'fields._sourceFile', header: 'Source File', type: 'text' as const, filterMode: 'contains' as const }]
+        : baseColumns;
+
+      updateWorkspace(ws.id, {
+        parsedEntries: mergedEntries,
+        columns: columnsWithSource,
+        parseState: {
+          fileName: paths.length === 1 ? paths[0] : `${paths.length} files`,
+          status: 'complete',
+          progress: 100,
+          totalEntries: mergedEntries.length,
+        },
+        status: 'ready',
+      });
+    } catch (err) {
+      console.error('[App] Silent re-parse failed:', err);
+    }
+  };
+
+  const silentReparseDirectoryRef = useRef(silentReparseDirectory);
+  useEffect(() => { silentReparseDirectoryRef.current = silentReparseDirectory; });
 
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
