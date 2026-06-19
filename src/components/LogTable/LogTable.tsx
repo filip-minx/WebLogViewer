@@ -22,6 +22,8 @@ interface LogTableProps {
   scrollToRowIndex?: number;
 }
 
+const BOTTOM_THRESHOLD = 60; // px from bottom counts as "at bottom"
+
 export const LogTable: React.FC<LogTableProps> = ({
   entries,
   columns,
@@ -34,7 +36,6 @@ export const LogTable: React.FC<LogTableProps> = ({
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const tableHeaderRef = useRef<HTMLTableSectionElement>(null);
   const isAtBottomRef = useRef<boolean>(false);
-  const BOTTOM_THRESHOLD = 60; // px from bottom counts as "at bottom"
   const [focusedRowIndex, setFocusedRowIndex] = useState<number>(-1);
   const [headerHeight, setHeaderHeight] = useState<number>(0);
   const [filterPopup, setFilterPopup] = useState<{
