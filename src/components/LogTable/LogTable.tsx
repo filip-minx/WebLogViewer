@@ -128,32 +128,47 @@ export const LogTable: React.FC<LogTableProps> = ({
     }
   }, [rows, focusedRowIndex, onRowSelect]);
 
+  const pendingScrollToBottom = useRef<boolean>(false);
+
   // Auto-scroll to newest row on refresh when user is already at the bottom.
-  // Key: use totalEntryCount (the raw unfiltered count) as the change signal, NOT rows.length.
-  // rows.length changes on filter changes too — e.g. clearing a filter would look like a
-  // refresh and incorrectly trigger auto-scroll.
+  // Uses totalEntryCount (raw unfiltered count) as the signal — NOT rows.length, which
+  // also changes on filter changes and would cause false triggers.
+  // Skips totalEntryCount=0: directory workspaces briefly clear parsedEntries before
+  // re-parsing, which would reset prevEntriesLengthRef and break the "was this a refresh"
+  // detection. We preserve the old count across that transient empty state.
   React.useEffect(() => {
     const newCount = totalEntryCount;
+    if (newCount === 0) return; // transient empty state during re-parse — skip
+
     const oldCount = prevEntriesLengthRef.current;
     prevEntriesLengthRef.current = newCount;
 
-    // Check if effectively at bottom (including case where no scrollbar exists)
     const el = tableContainerRef.current;
     const effectivelyAtBottom = isAtBottomRef.current || (!!el && el.scrollHeight <= el.clientHeight);
 
-    // Only act when entries were added (a real file refresh), not on initial load.
-    // oldCount > 0 also handles file switches: App.tsx clears parsedEntries to []
-    // before loading the new file, which resets prevEntriesLengthRef to 0 first.
+    // oldCount > 0 skips initial load. Fires on a real file refresh.
     if (newCount > oldCount && oldCount > 0 && effectivelyAtBottom) {
-      // Scroll to and focus the last *visible* (filtered) row
       if (rows.length > 0) {
         const lastIndex = rows.length - 1;
         rowVirtualizer.scrollToIndex(lastIndex, { align: 'end' });
         setFocusedRowIndex(lastIndex);
         onRowSelect(rows[lastIndex].original);
+      } else {
+        // filteredEntries not yet updated (separate render cycle); defer until rows arrive
+        pendingScrollToBottom.current = true;
       }
     }
-  }, [totalEntryCount, rows.length]);
+  }, [totalEntryCount]);
+
+  // Execute deferred scroll-to-bottom once rows become available after re-parse
+  React.useEffect(() => {
+    if (!pendingScrollToBottom.current || rows.length === 0) return;
+    pendingScrollToBottom.current = false;
+    const lastIndex = rows.length - 1;
+    rowVirtualizer.scrollToIndex(lastIndex, { align: 'end' });
+    setFocusedRowIndex(lastIndex);
+    onRowSelect(rows[lastIndex].original);
+  }, [rows.length]);
 
   // Scroll to and focus a row when driven externally (search nav)
   React.useEffect(() => {
