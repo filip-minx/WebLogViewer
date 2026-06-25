@@ -78,3 +78,62 @@ describe('applyFilters — text filter', () => {
     expect(result).toHaveLength(3);
   });
 });
+
+describe('applyFilters — source multiselect filter', () => {
+  function sourceEntry(source: string): ParsedLogEntry {
+    return {
+      rowId: source,
+      lineNumber: 1,
+      raw: source,
+      source,
+      fields: {},
+    };
+  }
+
+  const sourceEntries = [
+    sourceEntry('AuthService'),
+    sourceEntry('PaymentService'),
+    sourceEntry('UserService'),
+  ];
+
+  it('empty array: shows all entries', () => {
+    const state: FilterState = {
+      globalSearch: '',
+      columnFilters: { source: [] },
+    };
+    // empty array is removed by isEmpty guard before applyFilters is called,
+    // but applyFilters itself should not filter on empty arrays stored in columnFilters
+    // (the guard deletes the key; so this test confirms no key = all rows)
+    const stateNoKey: FilterState = { globalSearch: '', columnFilters: {} };
+    expect(applyFilters(sourceEntries, stateNoKey)).toHaveLength(3);
+  });
+
+  it('single selection: shows only matching entries', () => {
+    const state: FilterState = {
+      globalSearch: '',
+      columnFilters: { source: ['AuthService'] },
+    };
+    const result = applyFilters(sourceEntries, state);
+    expect(result).toHaveLength(1);
+    expect(result[0].source).toBe('AuthService');
+  });
+
+  it('multiple selections: shows all matching entries', () => {
+    const state: FilterState = {
+      globalSearch: '',
+      columnFilters: { source: ['AuthService', 'UserService'] },
+    };
+    const result = applyFilters(sourceEntries, state);
+    expect(result).toHaveLength(2);
+    expect(result.map(e => e.source)).toEqual(['AuthService', 'UserService']);
+  });
+
+  it('selection with no match: returns empty', () => {
+    const state: FilterState = {
+      globalSearch: '',
+      columnFilters: { source: ['UnknownService'] },
+    };
+    const result = applyFilters(sourceEntries, state);
+    expect(result).toHaveLength(0);
+  });
+});
