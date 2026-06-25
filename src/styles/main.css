@@ -110,13 +110,11 @@ body {
   flex-direction: column;
   background: var(--surface-1);
   border-right: 1px solid var(--border-standard);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .side-panel-content {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
 }
 
 
@@ -1358,7 +1356,6 @@ body {
 
 /* ===== WorkspaceList ===== */
 .workspace-list {
-  border-bottom: 1px solid var(--border-standard);
   flex-shrink: 0;
 }
 
@@ -1426,8 +1423,6 @@ body {
 }
 
 .workspace-list-items {
-  overflow-y: auto;
-  max-height: 180px;
 }
 
 .workspace-item {
