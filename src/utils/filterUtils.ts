@@ -17,8 +17,25 @@ export function applyFilters(
       const value = getColumnValue(entry, columnId);
 
       if (typeof filterValue === 'string') {
-        // Text contains filter
         return String(value || '').toLowerCase().includes(filterValue.toLowerCase());
+      }
+
+      if (
+        typeof filterValue === 'object' &&
+        !Array.isArray(filterValue) &&
+        'pattern' in filterValue &&
+        'isRegex' in filterValue
+      ) {
+        const { pattern, isRegex } = filterValue as import('../models/types').TextFilterValue;
+        if (!pattern) return true;
+        if (!isRegex) {
+          return String(value || '').toLowerCase().includes(pattern.toLowerCase());
+        }
+        try {
+          return new RegExp(pattern, 'i').test(String(value || ''));
+        } catch {
+          return false;
+        }
       }
 
       if (Array.isArray(filterValue)) {
