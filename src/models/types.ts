@@ -23,6 +23,11 @@ export type ColumnType = 'text' | 'timestamp' | 'enum' | 'number' | 'boolean';
 
 export type FilterMode = 'contains' | 'equals' | 'range' | 'multiselect';
 
+export interface TextFilterValue {
+  pattern: string;
+  isRegex: boolean;
+}
+
 export interface ColumnDef {
   id: string;
   header: string;
@@ -32,9 +37,10 @@ export interface ColumnDef {
 }
 
 export type FilterValue =
-  | string
+  | string           // legacy — treated as isRegex:false on read
   | number
   | boolean
+  | TextFilterValue
   | { min?: number; max?: number }
   | { start?: string; end?: string }
   | string[];
