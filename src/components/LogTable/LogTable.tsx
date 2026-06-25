@@ -281,6 +281,7 @@ export const LogTable: React.FC<LogTableProps> = ({
         <ColumnFilterPopup
           column={filterPopup.column}
           filterValue={filterState.columnFilters[filterPopup.column.id]}
+          entries={entries}
           onFilterChange={(value) => handleFilterChange(filterPopup.column.id, value)}
           onClose={() => setFilterPopup(null)}
           anchorElement={filterPopup.anchorElement}

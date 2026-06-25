@@ -1,12 +1,15 @@
 import React, { useEffect, useRef } from 'react';
-import type { ColumnDef, TextFilterValue } from '../../models/types';
+import type { ColumnDef, TextFilterValue, ParsedLogEntry } from '../../models/types';
 import { TextFilter } from '../FilterPanel/TextFilter';
 import { EnumFilter } from '../FilterPanel/EnumFilter';
 import { TimestampFilter } from '../FilterPanel/TimestampFilter';
+import { SourceFilter } from '../FilterPanel/SourceFilter';
+import { getUniqueEnumValues } from '../../utils/filterUtils';
 
 interface ColumnFilterPopupProps {
   column: ColumnDef;
   filterValue: any;
+  entries: ParsedLogEntry[];
   onFilterChange: (value: any) => void;
   onClose: () => void;
   anchorElement: HTMLElement;
@@ -15,6 +18,7 @@ interface ColumnFilterPopupProps {
 export const ColumnFilterPopup: React.FC<ColumnFilterPopupProps> = ({
   column,
   filterValue,
+  entries,
   onFilterChange,
   onClose,
   anchorElement,
@@ -58,6 +62,18 @@ export const ColumnFilterPopup: React.FC<ColumnFilterPopupProps> = ({
   }, [anchorElement]);
 
   const renderFilterControl = () => {
+    if (column.filterMode === 'searchable-multiselect') {
+      return (
+        <SourceFilter
+          columnId={column.id}
+          label=""
+          values={getUniqueEnumValues(entries, column.id)}
+          selected={(filterValue as string[]) || []}
+          onChange={onFilterChange}
+        />
+      );
+    }
+
     if (column.type === 'enum' && column.filterMode === 'multiselect') {
       return (
         <EnumFilter
@@ -101,7 +117,8 @@ export const ColumnFilterPopup: React.FC<ColumnFilterPopupProps> = ({
     onFilterChange(undefined);
   };
 
-  const hasFilter = filterValue && (
+  // SourceFilter renders its own Clear button — suppress the footer duplicate
+  const hasFilter = column.filterMode !== 'searchable-multiselect' && filterValue && (
     typeof filterValue === 'string' ? filterValue !== '' :
     Array.isArray(filterValue) ? filterValue.length > 0 :
     ('pattern' in filterValue) ? (filterValue as TextFilterValue).pattern !== '' :
