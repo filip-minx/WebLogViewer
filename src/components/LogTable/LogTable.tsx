@@ -14,6 +14,7 @@ import { entryMatchesSearch } from '../../utils/filterUtils';
 
 interface LogTableProps {
   entries: ParsedLogEntry[];
+  allEntries: ParsedLogEntry[];
   columns: ColumnDef[];
   filterState: FilterState;
   onFilterChange: (filterState: FilterState) => void;
@@ -26,6 +27,7 @@ interface LogTableProps {
 
 export const LogTable: React.FC<LogTableProps> = ({
   entries,
+  allEntries,
   columns,
   filterState,
   onFilterChange,
@@ -281,7 +283,7 @@ export const LogTable: React.FC<LogTableProps> = ({
         <ColumnFilterPopup
           column={filterPopup.column}
           filterValue={filterState.columnFilters[filterPopup.column.id]}
-          entries={entries}
+          entries={allEntries}
           onFilterChange={(value) => handleFilterChange(filterPopup.column.id, value)}
           onClose={() => setFilterPopup(null)}
           anchorElement={filterPopup.anchorElement}
