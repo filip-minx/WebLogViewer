@@ -235,8 +235,8 @@ function App() {
   const handleWorkspaceOpen = async (source: WorkspaceSource) => {
     try {
       const name = source.type === 'directory'
-        ? (source.dirHandle?.name ?? source.nativePath?.split(/[\\/]/).pop() ?? 'Unnamed')
-        : (source.file?.name ?? 'Unnamed');
+        ? (source.nativePath ?? source.dirHandle?.name ?? 'Unnamed')
+        : (source.nativePath ?? source.file?.name ?? 'Unnamed');
 
       const existing = workspaces.find(w => w.name === name);
       if (existing?.status === 'stale') {
@@ -605,13 +605,6 @@ function App() {
                 singleFileName={
                   activeWorkspace?.source.type === 'file' && activeWorkspace.source.file
                     ? activeWorkspace.source.file.name
-                    : undefined
-                }
-                rootLabel={
-                  activeWorkspace?.source.type === 'directory'
-                    ? (activeWorkspace.source.nativePath || activeWorkspace.source.dirHandle?.name)
-                    : activeWorkspace?.source.type === 'zip'
-                    ? (activeWorkspace.source.nativePath || activeWorkspace.source.file?.name)
                     : undefined
                 }
               />

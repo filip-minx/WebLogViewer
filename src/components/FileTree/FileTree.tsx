@@ -8,7 +8,6 @@ interface FileTreeProps {
   onFileSelect: (paths: string[]) => void;
   sourceType?: 'zip' | 'directory' | 'file';
   singleFileName?: string;
-  rootLabel?: string;
 }
 
 interface TreeNode {
@@ -19,10 +18,10 @@ interface TreeNode {
   children: Map<string, TreeNode>;
 }
 
-export const FileTree: React.FC<FileTreeProps> = ({ entries, selectedPaths, onFileSelect, sourceType, singleFileName, rootLabel }) => {
+export const FileTree: React.FC<FileTreeProps> = ({ entries, selectedPaths, onFileSelect, sourceType, singleFileName }) => {
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set(['/']));
 
-  const tree = useMemo(() => buildTree(entries, rootLabel), [entries, rootLabel]);
+  const tree = useMemo(() => buildTree(entries), [entries]);
 
   const toggleExpand = (path: string) => {
     setExpandedPaths(prev => {
@@ -76,21 +75,30 @@ export const FileTree: React.FC<FileTreeProps> = ({ entries, selectedPaths, onFi
 
   return (
     <div className="file-tree">
-      <FileTreeNode
-        node={tree}
-        level={0}
-        expandedPaths={expandedPaths}
-        selectedPaths={selectedPaths}
-        onToggleExpand={toggleExpand}
-        onFileSelect={handleFileSelect}
-      />
+      {Array.from(tree.children.values())
+        .sort((a, b) => {
+          if (a.isDirectory && !b.isDirectory) return -1;
+          if (!a.isDirectory && b.isDirectory) return 1;
+          return a.name.localeCompare(b.name);
+        })
+        .map(child => (
+          <FileTreeNode
+            key={child.path}
+            node={child}
+            level={0}
+            expandedPaths={expandedPaths}
+            selectedPaths={selectedPaths}
+            onToggleExpand={toggleExpand}
+            onFileSelect={handleFileSelect}
+          />
+        ))}
     </div>
   );
 };
 
-function buildTree(entries: ZipEntryMetadata[], rootLabel?: string): TreeNode {
+function buildTree(entries: ZipEntryMetadata[]): TreeNode {
   const root: TreeNode = {
-    name: rootLabel || '/',
+    name: '/',
     path: '/',
     isDirectory: true,
     size: 0,
