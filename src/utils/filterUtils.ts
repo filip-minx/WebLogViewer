@@ -1,6 +1,6 @@
 // Filter utility functions
 
-import type { ParsedLogEntry, FilterState } from '../models/types';
+import type { ParsedLogEntry, FilterState, TextFilterValue } from '../models/types';
 import { parseTimestamp } from './dateUtils';
 
 export function applyFilters(
@@ -12,6 +12,20 @@ export function applyFilters(
   // Apply column filters
   for (const [columnId, filterValue] of Object.entries(filterState.columnFilters)) {
     if (!filterValue) continue;
+
+    // Hoist regex compilation out of per-row callback
+    let compiledRegex: RegExp | null = null;
+    if (
+      typeof filterValue === 'object' &&
+      !Array.isArray(filterValue) &&
+      'pattern' in filterValue &&
+      'isRegex' in filterValue
+    ) {
+      const tfv = filterValue as TextFilterValue;
+      if (tfv.isRegex && tfv.pattern) {
+        try { compiledRegex = new RegExp(tfv.pattern, 'i'); } catch { compiledRegex = null; }
+      }
+    }
 
     filtered = filtered.filter(entry => {
       const value = getColumnValue(entry, columnId);
@@ -26,16 +40,13 @@ export function applyFilters(
         'pattern' in filterValue &&
         'isRegex' in filterValue
       ) {
-        const { pattern, isRegex } = filterValue as import('../models/types').TextFilterValue;
+        const { pattern, isRegex } = filterValue as TextFilterValue;
         if (!pattern) return true;
         if (!isRegex) {
           return String(value || '').toLowerCase().includes(pattern.toLowerCase());
         }
-        try {
-          return new RegExp(pattern, 'i').test(String(value || ''));
-        } catch {
-          return false;
-        }
+        if (!compiledRegex) return false; // invalid regex
+        return compiledRegex.test(String(value || ''));
       }
 
       if (Array.isArray(filterValue)) {
