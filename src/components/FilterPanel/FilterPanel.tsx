@@ -1,19 +1,23 @@
 import React from 'react';
-import type { ColumnDef, FilterState, TextFilterValue } from '../../models/types';
+import type { ColumnDef, FilterState, TextFilterValue, ParsedLogEntry } from '../../models/types';
 import { GlobalSearch } from './GlobalSearch';
 import { TextFilter } from './TextFilter';
 import { EnumFilter } from './EnumFilter';
 import { TimestampFilter } from './TimestampFilter';
+import { SourceFilter } from './SourceFilter';
+import { getUniqueEnumValues } from '../../utils/filterUtils';
 
 interface FilterPanelProps {
   columns: ColumnDef[];
   filterState: FilterState;
+  entries: ParsedLogEntry[];
   onFilterChange: (filterState: FilterState) => void;
 }
 
 export const FilterPanel: React.FC<FilterPanelProps> = ({
   columns,
   filterState,
+  entries,
   onFilterChange,
 }) => {
   const handleGlobalSearchChange = (value: string) => {
@@ -78,6 +82,19 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
           .filter(col => col.filterMode && col.id !== 'lineNumber')
           .map(col => {
             const filterValue = filterState.columnFilters[col.id];
+
+            if (col.filterMode === 'searchable-multiselect') {
+              return (
+                <SourceFilter
+                  key={col.id}
+                  columnId={col.id}
+                  label={col.header}
+                  values={getUniqueEnumValues(entries, col.id)}
+                  selected={(filterValue as string[]) || []}
+                  onChange={value => handleColumnFilterChange(col.id, value)}
+                />
+              );
+            }
 
             if (col.type === 'enum' && col.filterMode === 'multiselect') {
               return (
