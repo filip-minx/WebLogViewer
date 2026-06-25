@@ -4,6 +4,7 @@ import type { Workspace, WorkspaceSource } from '../../models/types';
 interface WorkspaceListProps {
   workspaces: Workspace[];
   activeWorkspaceId: string | null;
+  collapsedWorkspaces: Set<string>;
   onWorkspaceSelect: (id: string) => void;
   onWorkspaceClose: (id: string) => void | Promise<void>;
   onWorkspaceRename: (id: string, newName: string) => void;
@@ -32,6 +33,7 @@ function getStatusDot(status: string): string {
 export function WorkspaceList({
   workspaces,
   activeWorkspaceId,
+  collapsedWorkspaces,
   onWorkspaceSelect,
   onWorkspaceClose,
   onWorkspaceRename,
@@ -116,7 +118,11 @@ export function WorkspaceList({
             onClick={() => onWorkspaceSelect(ws.id)}
             title={`${ws.name}\nStatus: ${ws.status}`}
           >
-            <span className="workspace-source-icon">{getSourceIcon(ws.source)}</span>
+            <span className="workspace-source-icon">
+              {ws.id === activeWorkspaceId && ws.source.type !== 'file'
+                ? (collapsedWorkspaces.has(ws.id) ? '▶' : '▼')
+                : getSourceIcon(ws.source)}
+            </span>
 
             {editingId === ws.id ? (
               <input

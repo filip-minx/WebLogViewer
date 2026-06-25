@@ -73,6 +73,7 @@ function App() {
   const [searchMatchIndex, setSearchMatchIndex] = useState(0);
   const [searchScrollTarget, setSearchScrollTarget] = useState(-1);
   const [autoScroll, setAutoScroll] = useState(false);
+  const [collapsedWorkspaces, setCollapsedWorkspaces] = useState<Set<string>>(new Set());
 
   const dragCounter = useRef(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -568,10 +569,12 @@ function App() {
             <WorkspaceList
               workspaces={workspaces}
               activeWorkspaceId={activeWorkspaceId}
+              collapsedWorkspaces={collapsedWorkspaces}
               onWorkspaceSelect={async (id) => {
                 const ws = workspaces.find(w => w.id === id);
                 if (!ws) return;
                 if (ws.status === 'stale') {
+                  setCollapsedWorkspaces(prev => { const next = new Set(prev); next.delete(id); return next; });
                   const reloadedSource = await reloadStaleWorkspace(id);
                   if (reloadedSource) {
                     await openWorkspaceContent(id, reloadedSource);
@@ -581,7 +584,14 @@ function App() {
                       : await FilePickerService.pickFile();
                     if (source) await handleWorkspaceOpen(source);
                   }
+                } else if (id === activeWorkspaceId) {
+                  setCollapsedWorkspaces(prev => {
+                    const next = new Set(prev);
+                    if (next.has(id)) next.delete(id); else next.add(id);
+                    return next;
+                  });
                 } else {
+                  setCollapsedWorkspaces(prev => { const next = new Set(prev); next.delete(id); return next; });
                   switchWorkspace(id);
                 }
               }}
@@ -596,19 +606,21 @@ function App() {
                 if (source) await handleWorkspaceOpen(source);
               }}
             />
-            <div className="side-panel-content">
-              <FileTree
-                entries={activeWorkspace?.fileEntries || []}
-                selectedPaths={activeWorkspace?.selectedFilePaths || []}
-                onFileSelect={handleTreeFileSelect}
-                sourceType={activeWorkspace?.source.type}
-                singleFileName={
-                  activeWorkspace?.source.type === 'file' && activeWorkspace.source.file
-                    ? activeWorkspace.source.file.name
-                    : undefined
-                }
-              />
-            </div>
+            {activeWorkspace && !collapsedWorkspaces.has(activeWorkspaceId!) && (
+              <div className="side-panel-content">
+                <FileTree
+                  entries={activeWorkspace.fileEntries || []}
+                  selectedPaths={activeWorkspace.selectedFilePaths || []}
+                  onFileSelect={handleTreeFileSelect}
+                  sourceType={activeWorkspace.source.type}
+                  singleFileName={
+                    activeWorkspace.source.type === 'file' && activeWorkspace.source.file
+                      ? activeWorkspace.source.file.name
+                      : undefined
+                  }
+                />
+              </div>
+            )}
           </aside>
 
           {/* Sidebar resize handle */}
