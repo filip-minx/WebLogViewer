@@ -684,6 +684,7 @@ body {
 .source-filter-option input[type="checkbox"] {
   cursor: pointer;
   flex-shrink: 0;
+  margin-right: 8px;
 }
 
 .source-filter-empty {
