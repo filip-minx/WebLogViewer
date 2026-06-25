@@ -96,16 +96,12 @@ describe('applyFilters — source multiselect filter', () => {
     sourceEntry('UserService'),
   ];
 
-  it('empty array: shows all entries', () => {
-    const state: FilterState = {
-      globalSearch: '',
-      columnFilters: { source: [] },
-    };
-    // empty array is removed by isEmpty guard before applyFilters is called,
-    // but applyFilters itself should not filter on empty arrays stored in columnFilters
-    // (the guard deletes the key; so this test confirms no key = all rows)
+  it('empty selection: shows all entries (no key and empty array both pass through)', () => {
     const stateNoKey: FilterState = { globalSearch: '', columnFilters: {} };
     expect(applyFilters(sourceEntries, stateNoKey)).toHaveLength(3);
+
+    const stateEmptyArray: FilterState = { globalSearch: '', columnFilters: { source: [] } };
+    expect(applyFilters(sourceEntries, stateEmptyArray)).toHaveLength(3);
   });
 
   it('single selection: shows only matching entries', () => {

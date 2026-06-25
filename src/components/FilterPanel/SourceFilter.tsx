@@ -35,14 +35,14 @@ export const SourceFilter: React.FC<SourceFilterProps> = ({
 
   return (
     <div className="filter-control source-filter">
-      {label && <label>{label}</label>}
+      {label && <label htmlFor={`${columnId}-search`}>{label}</label>}
       <input
+        id={`${columnId}-search`}
         type="text"
         className="source-filter-search"
         placeholder="Search sources…"
         value={searchTerm}
         onChange={e => setSearchTerm(e.target.value)}
-        autoFocus
       />
       <div className="source-filter-list">
         {visible.length === 0 ? (

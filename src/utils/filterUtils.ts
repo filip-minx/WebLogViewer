@@ -50,7 +50,7 @@ export function applyFilters(
       }
 
       if (Array.isArray(filterValue)) {
-        // Multi-select enum filter
+        if (filterValue.length === 0) return true;
         return filterValue.includes(String(value));
       }
 
