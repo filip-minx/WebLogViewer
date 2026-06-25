@@ -8,6 +8,7 @@ interface FileTreeProps {
   onFileSelect: (paths: string[]) => void;
   sourceType?: 'zip' | 'directory' | 'file';
   singleFileName?: string;
+  rootLabel?: string;
 }
 
 interface TreeNode {
@@ -18,10 +19,10 @@ interface TreeNode {
   children: Map<string, TreeNode>;
 }
 
-export const FileTree: React.FC<FileTreeProps> = ({ entries, selectedPaths, onFileSelect, sourceType, singleFileName }) => {
+export const FileTree: React.FC<FileTreeProps> = ({ entries, selectedPaths, onFileSelect, sourceType, singleFileName, rootLabel }) => {
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set(['/']));
 
-  const tree = useMemo(() => buildTree(entries), [entries]);
+  const tree = useMemo(() => buildTree(entries, rootLabel), [entries, rootLabel]);
 
   const toggleExpand = (path: string) => {
     setExpandedPaths(prev => {
@@ -87,9 +88,9 @@ export const FileTree: React.FC<FileTreeProps> = ({ entries, selectedPaths, onFi
   );
 };
 
-function buildTree(entries: ZipEntryMetadata[]): TreeNode {
+function buildTree(entries: ZipEntryMetadata[], rootLabel?: string): TreeNode {
   const root: TreeNode = {
-    name: '/',
+    name: rootLabel || '/',
     path: '/',
     isDirectory: true,
     size: 0,

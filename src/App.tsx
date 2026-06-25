@@ -607,6 +607,13 @@ function App() {
                     ? activeWorkspace.source.file.name
                     : undefined
                 }
+                rootLabel={
+                  activeWorkspace?.source.type === 'directory'
+                    ? (activeWorkspace.source.nativePath || activeWorkspace.source.dirHandle?.name)
+                    : activeWorkspace?.source.type === 'zip'
+                    ? (activeWorkspace.source.nativePath || activeWorkspace.source.file?.name)
+                    : undefined
+                }
               />
             </div>
           </aside>
