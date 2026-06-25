@@ -629,6 +629,89 @@ body {
   color: var(--error);
 }
 
+.source-filter-search {
+  width: 100%;
+  padding: var(--space-sm);
+  border: 1px solid var(--border-standard);
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--text-primary);
+  transition: all 0.12s ease;
+  box-sizing: border-box;
+  margin-bottom: var(--space-sm);
+}
+
+.source-filter-search:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
+}
+
+.source-filter-search::placeholder {
+  color: var(--text-muted);
+}
+
+.source-filter-list {
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: var(--space-xs);
+}
+
+.source-filter-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: 3px;
+  color: var(--text-primary);
+  transition: background 0.08s ease;
+  user-select: none;
+}
+
+.source-filter-option:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.source-filter-option input[type="checkbox"] {
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.source-filter-empty {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  padding: var(--space-xs) var(--space-sm);
+  font-style: italic;
+}
+
+.source-filter-clear {
+  margin-top: var(--space-sm);
+  padding: var(--space-xs) var(--space-sm);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-standard);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  transition: all 0.12s ease;
+  width: 100%;
+}
+
+.source-filter-clear:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
+}
+
 .enum-actions {
   display: flex;
   gap: var(--spacing-xs);
