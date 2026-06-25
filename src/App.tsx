@@ -570,6 +570,21 @@ function App() {
               workspaces={workspaces}
               activeWorkspaceId={activeWorkspaceId}
               collapsedWorkspaces={collapsedWorkspaces}
+              renderTree={() => (
+                <div className="side-panel-content">
+                  <FileTree
+                    entries={activeWorkspace?.fileEntries || []}
+                    selectedPaths={activeWorkspace?.selectedFilePaths || []}
+                    onFileSelect={handleTreeFileSelect}
+                    sourceType={activeWorkspace?.source.type}
+                    singleFileName={
+                      activeWorkspace?.source.type === 'file' && activeWorkspace.source.file
+                        ? activeWorkspace.source.file.name
+                        : undefined
+                    }
+                  />
+                </div>
+              )}
               onWorkspaceSelect={async (id) => {
                 const ws = workspaces.find(w => w.id === id);
                 if (!ws) return;
@@ -606,21 +621,6 @@ function App() {
                 if (source) await handleWorkspaceOpen(source);
               }}
             />
-            {activeWorkspace && !collapsedWorkspaces.has(activeWorkspaceId!) && (
-              <div className="side-panel-content">
-                <FileTree
-                  entries={activeWorkspace.fileEntries || []}
-                  selectedPaths={activeWorkspace.selectedFilePaths || []}
-                  onFileSelect={handleTreeFileSelect}
-                  sourceType={activeWorkspace.source.type}
-                  singleFileName={
-                    activeWorkspace.source.type === 'file' && activeWorkspace.source.file
-                      ? activeWorkspace.source.file.name
-                      : undefined
-                  }
-                />
-              </div>
-            )}
           </aside>
 
           {/* Sidebar resize handle */}
