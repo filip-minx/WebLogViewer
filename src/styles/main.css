@@ -666,7 +666,7 @@ body {
 .source-filter-option {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: 12px;
   cursor: pointer;
   font-size: 12px;
   font-family: var(--font-mono);
