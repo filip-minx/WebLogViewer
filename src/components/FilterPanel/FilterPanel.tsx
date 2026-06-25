@@ -29,7 +29,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
     const isEmpty =
       !value ||
       (Array.isArray(value) && value.length === 0) ||
-      (typeof value === 'object' && 'pattern' in value && !value.pattern && !value.isRegex);
+      (typeof value === 'object' && 'pattern' in value && !value.pattern);
 
     if (isEmpty) {
       delete newColumnFilters[columnId];
