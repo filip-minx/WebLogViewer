@@ -113,7 +113,7 @@ export class PipeWindowsParser extends BaseParser {
         filterMode: 'multiselect',
         enumValues: ['ERROR', 'WARN', 'INFO', 'DEBUG', 'TRACE'],
       },
-      { id: 'source', header: 'Source', type: 'text', filterMode: 'contains' },
+      { id: 'source', header: 'Source', type: 'text', filterMode: 'searchable-multiselect' },
       { id: 'message', header: 'Message', type: 'text', filterMode: 'contains' },
     ];
   }

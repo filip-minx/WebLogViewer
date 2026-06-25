@@ -21,7 +21,7 @@ export interface ZipEntryMetadata {
 
 export type ColumnType = 'text' | 'timestamp' | 'enum' | 'number' | 'boolean';
 
-export type FilterMode = 'contains' | 'equals' | 'range' | 'multiselect';
+export type FilterMode = 'contains' | 'equals' | 'range' | 'multiselect' | 'searchable-multiselect';
 
 export interface TextFilterValue {
   pattern: string;

@@ -96,7 +96,7 @@ export class JsonLinesParser extends BaseParser {
     const baseColumns: ColumnDef[] = [
       { id: 'timestamp', header: 'Timestamp', type: 'timestamp', filterMode: 'range' },
       { id: 'level', header: 'Level', type: 'text', filterMode: 'contains' },
-      { id: 'source', header: 'Source', type: 'text', filterMode: 'contains' },
+      { id: 'source', header: 'Source', type: 'text', filterMode: 'searchable-multiselect' },
       { id: 'message', header: 'Message', type: 'text', filterMode: 'contains' },
     ];
 
