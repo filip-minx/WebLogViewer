@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import type { ColumnDef } from '../../models/types';
+import type { ColumnDef, TextFilterValue } from '../../models/types';
 import { TextFilter } from '../FilterPanel/TextFilter';
 import { EnumFilter } from '../FilterPanel/EnumFilter';
 import { TimestampFilter } from '../FilterPanel/TimestampFilter';
@@ -88,7 +88,7 @@ export const ColumnFilterPopup: React.FC<ColumnFilterPopupProps> = ({
         <TextFilter
           columnId={column.id}
           label=""
-          value={(filterValue as string) || ''}
+          value={(filterValue as string | TextFilterValue) ?? ''}
           onChange={onFilterChange}
         />
       );
@@ -104,7 +104,8 @@ export const ColumnFilterPopup: React.FC<ColumnFilterPopupProps> = ({
   const hasFilter = filterValue && (
     typeof filterValue === 'string' ? filterValue !== '' :
     Array.isArray(filterValue) ? filterValue.length > 0 :
-    (filterValue.start || filterValue.end)
+    ('pattern' in filterValue) ? (filterValue as TextFilterValue).pattern !== '' :
+    ((filterValue as any).start || (filterValue as any).end)
   );
 
   return (

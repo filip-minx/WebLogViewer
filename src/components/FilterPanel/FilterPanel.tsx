@@ -1,5 +1,5 @@
 import React from 'react';
-import type { ColumnDef, FilterState } from '../../models/types';
+import type { ColumnDef, FilterState, TextFilterValue } from '../../models/types';
 import { GlobalSearch } from './GlobalSearch';
 import { TextFilter } from './TextFilter';
 import { EnumFilter } from './EnumFilter';
@@ -26,7 +26,12 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
   const handleColumnFilterChange = (columnId: string, value: any) => {
     const newColumnFilters = { ...filterState.columnFilters };
 
-    if (!value || (Array.isArray(value) && value.length === 0)) {
+    const isEmpty =
+      !value ||
+      (Array.isArray(value) && value.length === 0) ||
+      (typeof value === 'object' && 'pattern' in value && !value.pattern && !value.isRegex);
+
+    if (isEmpty) {
       delete newColumnFilters[columnId];
     } else {
       newColumnFilters[columnId] = value;
@@ -109,7 +114,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                   key={col.id}
                   columnId={col.id}
                   label={col.header}
-                  value={(filterValue as string) || ''}
+                  value={(filterValue as string | TextFilterValue) ?? ''}
                   onChange={value => handleColumnFilterChange(col.id, value)}
                 />
               );
