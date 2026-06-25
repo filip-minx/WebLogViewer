@@ -166,7 +166,8 @@ export const LogTable: React.FC<LogTableProps> = ({
     const shouldRemove =
       !value ||
       (Array.isArray(value) && value.length === 0) ||
-      (typeof value === 'object' && !Array.isArray(value) && !value.start && !value.end);
+      (typeof value === 'object' && 'pattern' in value && !value.pattern) ||
+      (typeof value === 'object' && !Array.isArray(value) && !('pattern' in value) && !value.start && !value.end);
 
     if (shouldRemove) {
       delete newColumnFilters[columnId];
