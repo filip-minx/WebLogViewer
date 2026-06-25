@@ -8,7 +8,7 @@ interface TextFilterProps {
   columnId: string;
   label: string;
   value: TextFilterRawValue;
-  onChange: (value: TextFilterRawValue) => void;
+  onChange: (value: TextFilterValue) => void;
 }
 
 function normalise(value: TextFilterRawValue): TextFilterValue {
