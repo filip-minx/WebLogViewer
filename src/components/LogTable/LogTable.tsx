@@ -22,6 +22,7 @@ interface LogTableProps {
   searchHighlight?: string;
   scrollToRowIndex?: number;
   autoScroll?: boolean;
+  isLoading?: boolean;
 }
 
 
@@ -35,6 +36,7 @@ export const LogTable: React.FC<LogTableProps> = ({
   searchHighlight,
   scrollToRowIndex,
   autoScroll = false,
+  isLoading = false,
 }) => {
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const tableHeaderRef = useRef<HTMLTableSectionElement>(null);
@@ -240,7 +242,7 @@ export const LogTable: React.FC<LogTableProps> = ({
           {hasNoEntries ? (
             <tr>
               <td colSpan={columns.length} className="no-results-message">
-                No log entries match the current filters
+                {isLoading ? 'Loading log entries…' : 'No log entries match the current filters'}
               </td>
             </tr>
           ) : (

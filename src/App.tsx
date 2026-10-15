@@ -64,9 +64,6 @@ function App() {
 
   const activeWorkspace = getActiveWorkspace();
 
-  // Filter state for current view (not stored in workspace)
-  const [filteredEntries, setFilteredEntries] = useState<ParsedLogEntry[]>([]);
-
   // UI state
   const [selectedEntry, setSelectedEntry] = useState<ParsedLogEntry | null>(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
@@ -452,14 +449,11 @@ function App() {
     }
   };
 
-  // Apply filters when active workspace or filter state changes
-  useEffect(() => {
-    if (!activeWorkspace || activeWorkspace.parsedEntries.length === 0) {
-      setFilteredEntries([]);
-      return;
-    }
-    const filtered = applyFilters(activeWorkspace.parsedEntries, activeWorkspace.filterState);
-    setFilteredEntries(filtered);
+  // Apply filters when active workspace or filter state changes. Computed during
+  // render (not in an effect) so freshly parsed entries never flash as "no matches".
+  const filteredEntries = useMemo(() => {
+    if (!activeWorkspace || activeWorkspace.parsedEntries.length === 0) return [];
+    return applyFilters(activeWorkspace.parsedEntries, activeWorkspace.filterState);
   }, [activeWorkspace]);
 
   // Indices into filteredEntries that match the current search term
@@ -687,6 +681,7 @@ function App() {
                   searchHighlight={activeWorkspace.filterState.globalSearch}
                   scrollToRowIndex={searchScrollTarget}
                   autoScroll={autoScroll}
+                  isLoading={activeWorkspace.status === 'parsing'}
                 />
               )}
             </div>
